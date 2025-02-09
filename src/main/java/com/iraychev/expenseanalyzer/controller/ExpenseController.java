@@ -1,7 +1,6 @@
 package com.iraychev.expenseanalyzer.controller;
 
-import com.iraychev.expenseanalyzer.dto.TransactionDTO;
-import com.iraychev.expenseanalyzer.dto.UserDTO;
+import com.gocardless.resources.Payment;
 import com.iraychev.expenseanalyzer.entity.Transaction;
 import com.iraychev.expenseanalyzer.entity.User;
 import com.iraychev.expenseanalyzer.service.GoCardlessService;
@@ -28,21 +27,17 @@ public class ExpenseController {
     private final GoCardlessService goCardlessService;
     private final TransactionCategoryService categoryService;
 
-    @GetMapping("/users/{userId}")
-    public ResponseEntity<UserDTO> getUser(@PathVariable Long userId) {
-        return ResponseEntity.ok(userService.getUserById(userId));
-    }
-
     @PostMapping("/users/{userId}/fetch-transactions")
-    public ResponseEntity<String> fetchAndSaveTransactions(
-            @PathVariable Long userId,
-            @RequestParam String accountId) {
-
-        var externalPayments = goCardlessService.fetchPayments(accountId);
+    public ResponseEntity<String> fetchAndSaveTransactions(@PathVariable Long userId,
+                                                           @RequestParam String accountId) {
+        // Fetch external payments using the GoCardless service.
+        List<Payment> externalPayments = goCardlessService.fetchPayments(accountId);
         User user = userService.findUserById(userId);
         DateTimeFormatter formatter = DateTimeFormatter.ISO_DATE;
 
+        // Iterate through the fetched payments and convert each to a Transaction entity.
         externalPayments.forEach(extPayment -> {
+            // Assume extPayment.getCreatedAt() returns an ISO-8601 timestamp.
             LocalDate bookingDate = LocalDate.parse(extPayment.getCreatedAt().substring(0, 10), formatter);
 
             Transaction tx = Transaction.builder()
@@ -56,19 +51,8 @@ public class ExpenseController {
                     .build();
             transactionService.saveTransaction(tx);
         });
+
         return ResponseEntity.ok("Transactions fetched and saved successfully");
-    }
-
-    @GetMapping("/users/{userId}/transactions")
-    public ResponseEntity<List<TransactionDTO>> getUserTransactions(
-            @PathVariable Long userId,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
-
-        if (startDate != null && endDate != null) {
-            return ResponseEntity.ok(transactionService.getTransactionsByDateRange(userId, startDate, endDate));
-        }
-        return ResponseEntity.ok(transactionService.getTransactionsByUserId(userId));
     }
 
     @GetMapping("/users/{userId}/expenses/by-category")

@@ -7,6 +7,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+import java.util.function.Supplier;
+
 @Configuration
 @RequiredArgsConstructor
 public class GoCardlessConfig {
@@ -18,12 +20,7 @@ public class GoCardlessConfig {
     @Bean
     public GoCardlessClient goCardlessClient() {
         GoCardlessClient.Environment gcEnv = GoCardlessClient.Environment.valueOf(environment.toUpperCase());
-        return GoCardlessClient.newBuilder(new AccessTokenProvider() {
-                    @Override
-                    public String getAccessToken() {
-                        return tokenService.getValidAccessToken();
-                    }
-                })
+        return GoCardlessClient.newBuilder(String.valueOf((Supplier<String>) tokenService::getValidAccessToken))
                 .withEnvironment(gcEnv)
                 .build();
     }
