@@ -11,13 +11,16 @@ import com.iraychev.expenseanalyzer.repository.BankAccountRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.*;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -26,10 +29,16 @@ public class BankConnectionService {
     private final GoCardlessClient goCardlessClient;
     private final BankAccountRepository bankAccountRepository;
     private final UserService userService;
+    private final RestTemplate restTemplate;
 
     @Value("${gocardless.redirect-uri}")
     private String redirectUri;
 
+    @Value("${gocardless.agreement-id}")
+    private String agreementId;
+
+    @Value("${gocardless.access-token}")
+    private String accessToken;
     @Value("${gocardless.customer-bank-account.currency}")
     private String currency;
 
@@ -43,7 +52,39 @@ public class BankConnectionService {
         return "https://gocardless.com/authorize?state=" + userId + "&redirect_uri=" + redirectUri;
     }
 
-    // Handles the callback by exchanging the authorization code for bank account details.
+    @Transactional
+    public String initiateBankConnection(Long userId, String institutionId) {
+        log.info("Initiating bank connection for user {} with institution {}", userId, institutionId);
+
+        String url = "https://bankaccountdata.gocardless.com/api/v2/requisitions/";
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(accessToken); // use the access token from application.yaml
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        // Prepare the request payload dynamically using the provided institutionId.
+        Map<String, Object> requestBody = new HashMap<>();
+        requestBody.put("redirect", redirectUri);
+        requestBody.put("institution_id", institutionId); // dynamic institution id from the call
+        requestBody.put("reference", String.valueOf(userId)); // you can use userId or any unique reference
+        requestBody.put("agreement", agreementId);
+        requestBody.put("user_language", countryCode);
+
+        HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(requestBody, headers);
+
+        // Call the real GoCardless endpoint to create a requisition.
+        ResponseEntity<Map> responseEntity = restTemplate.exchange(url, HttpMethod.POST, requestEntity, Map.class);
+
+        if (responseEntity.getStatusCode() == HttpStatus.CREATED || responseEntity.getStatusCode() == HttpStatus.OK) {
+            Map responseMap = responseEntity.getBody();
+            String authorizationUrl = (String) responseMap.get("link");
+            // Optionally, you can save the requisition ID (from responseMap.get("id")) for later use.
+            return authorizationUrl;
+        } else {
+            throw new BankConnectionException("Failed to create bank requisition, status code: " + responseEntity.getStatusCode(), new RuntimeException());
+        }
+    }
+
     @Transactional
     public void handleCallback(String code, String state) {
         Long userId;
@@ -54,19 +95,20 @@ public class BankConnectionService {
         }
         User user = userService.findUserById(userId);
 
+        // In a real implementation, exchange the authorization code for bank account details.
+        // Here we simulate by creating a bank account with dummy data.
         CustomerBankAccount customerBankAccount = goCardlessClient.customerBankAccounts()
                 .create()
-                .withAccountHolderName("John Doe")     // Replace with real data from callback
-                .withAccountNumber("00012345")           // Replace with real bank account details
+                .withAccountHolderName("John Doe")    // Replace with actual data from GoCardless response
+                .withAccountNumber("00012345")          // Replace with real bank account details
                 .withBranchCode("123456")
-                .withCountryCode(countryCode)
-                .withCurrency(currency)
+                .withCountryCode("GB")
+                .withCurrency("GBP")
                 .execute();
 
-        // Map and save the bank account into your local database.
         BankAccount bankAccount = BankAccount.builder()
                 .accountId(customerBankAccount.getId())
-                .bankName("Demo Bank") // Replace with bank name from response if available.
+                .bankName("Real Bank Name")  // Ideally, map this from the response
                 .status("ACTIVE")
                 .user(user)
                 .connectedAt(LocalDateTime.now())
@@ -74,33 +116,5 @@ public class BankConnectionService {
 
         bankAccountRepository.save(bankAccount);
         log.info("Bank account connected successfully for user {}", userId);
-    }
-
-    @Transactional
-    public void disconnectBankAccount(Long userId, String accountId) {
-        BankAccount bankAccount = bankAccountRepository.findByAccountIdAndUserId(accountId, userId)
-                .orElseThrow(() -> new ResourceNotFoundException("Bank account not found"));
-        try {
-            goCardlessClient.customerBankAccounts()
-                    .disable(accountId)
-                    .execute();
-            bankAccount.setStatus("DISABLED");
-            bankAccountRepository.save(bankAccount);
-            log.info("Successfully disabled bank account {} for user {}", accountId, userId);
-        } catch (Exception e) {
-            log.error("Failed to disable bank account {} for user {}", accountId, userId, e);
-            throw new BankConnectionException("Failed to disable bank account", e);
-        }
-    }
-
-    @Transactional(readOnly = true)
-    public List<BankAccount> getUserBankAccounts(Long userId) {
-        return bankAccountRepository.findByUserId(userId);
-    }
-
-    @Transactional(readOnly = true)
-    public BankAccount getBankAccount(Long userId, String accountId) {
-        return bankAccountRepository.findByAccountIdAndUserId(accountId, userId)
-                .orElseThrow(() -> new ResourceNotFoundException("Bank account not found"));
     }
 }

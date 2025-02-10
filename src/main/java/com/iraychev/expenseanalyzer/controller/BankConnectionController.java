@@ -13,16 +13,19 @@ import java.util.Map;
 public class BankConnectionController {
     private final BankConnectionService bankConnectionService;
 
+    // Initiate a bank connection for a given user with a dynamic institution ID.
     @PostMapping("/users/{userId}/connect")
-    public ResponseEntity<Map<String, String>> initiateBankConnection(@PathVariable Long userId) {
-        String authUrl = bankConnectionService.initiateBankConnection(userId);
+    public ResponseEntity<Map<String, String>> initiateBankConnection(
+            @PathVariable Long userId,
+            @RequestParam String institutionId) {  // institutionId is provided from the frontend
+        String authUrl = bankConnectionService.initiateBankConnection(userId, institutionId);
         return ResponseEntity.ok(Map.of("authorizationUrl", authUrl));
     }
 
+    // Callback endpoint remains the same.
     @GetMapping("/callback")
-    public ResponseEntity<String> handleCallback(
-            @RequestParam String code,
-            @RequestParam String state) {
+    public ResponseEntity<String> handleCallback(@RequestParam String code,
+                                                 @RequestParam String state) {
         bankConnectionService.handleCallback(code, state);
         return ResponseEntity.ok("Bank account connected successfully");
     }
