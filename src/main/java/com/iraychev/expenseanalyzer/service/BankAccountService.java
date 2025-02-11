@@ -9,6 +9,7 @@ import com.iraychev.expenseanalyzer.dto.TransactionDto;
 import com.iraychev.expenseanalyzer.exception.ResourceNotFoundException;
 import com.iraychev.expenseanalyzer.repository.BankAccountRepository;
 import lombok.extern.slf4j.Slf4j;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,19 +20,12 @@ import java.util.stream.Collectors;
 @Service
 @Transactional
 @Slf4j
+@RequiredArgsConstructor
 public class BankAccountService {
 
     private final GoCardlessIntegrationService goCardlessIntegrationService;
     private final BankAccountRepository bankAccountRepository;
     private final TransactionService transactionService;
-
-    public BankAccountService(GoCardlessIntegrationService goCardlessIntegrationService,
-                              BankAccountRepository bankAccountRepository,
-                              TransactionService transactionService) {
-        this.goCardlessIntegrationService = goCardlessIntegrationService;
-        this.bankAccountRepository = bankAccountRepository;
-        this.transactionService = transactionService;
-    }
 
     public RequisitionDto createRequisition(RequisitionRequestDto requestDto) {
         return goCardlessIntegrationService.createRequisition(requestDto);

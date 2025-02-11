@@ -16,12 +16,9 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/users")
 @Slf4j
+@RequiredArgsConstructor
 public class UserController {
     private final UserService userService;
-
-    public UserController(UserService userService) {
-        this.userService = userService;
-    }
 
     @GetMapping
     public ResponseEntity<List<UserDto>> getAllUsers() {

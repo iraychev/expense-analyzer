@@ -6,6 +6,7 @@ import com.iraychev.expenseanalyzer.dto.RequisitionRequestDto;
 import com.iraychev.expenseanalyzer.dto.TransactionDto;
 import com.iraychev.expenseanalyzer.service.BankAccountService;
 import lombok.extern.slf4j.Slf4j;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -15,13 +16,10 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/bank-accounts")
 @Slf4j
+@RequiredArgsConstructor
 public class BankAccountController {
 
     private final BankAccountService bankAccountService;
-
-    public BankAccountController(BankAccountService bankAccountService) {
-        this.bankAccountService = bankAccountService;
-    }
 
     // Step 4: Create a requisition (build a link)
     @PostMapping("/requisitions")

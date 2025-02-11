@@ -23,17 +23,10 @@ import java.util.stream.Collectors;
 @Service
 @Transactional
 @Slf4j
+@RequiredArgsConstructor
 public class TransactionService {
     private final TransactionRepository transactionRepository;
     private final BankAccountRepository bankAccountRepository;
-
-    public TransactionService(
-            TransactionRepository transactionRepository,
-            BankAccountRepository bankAccountRepository
-    ) {
-        this.transactionRepository = transactionRepository;
-        this.bankAccountRepository = bankAccountRepository;
-    }
 
     public List<Transaction> saveTransactions(List<Transaction> transactions) {
         return transactionRepository.saveAll(transactions);
