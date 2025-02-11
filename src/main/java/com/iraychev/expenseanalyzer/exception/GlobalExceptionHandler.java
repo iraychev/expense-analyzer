@@ -12,34 +12,36 @@ import java.time.LocalDateTime;
 @Slf4j
 public class GlobalExceptionHandler {
 
-    @ExceptionHandler(ResourceNotFoundException.class)
-    public ResponseEntity<ErrorResponse> handleResourceNotFoundException(ResourceNotFoundException ex) {
-        ErrorResponse error = new ErrorResponse(
-                HttpStatus.NOT_FOUND.value(),
-                ex.getMessage(),
-                LocalDateTime.now()
-        );
-        return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+    @ExceptionHandler({ResourceNotFoundException.class})
+    public ResponseEntity<ExceptionBody> handleNotFoundException(CustomResponseStatusException e) {
+        return handler(e);
     }
 
-    @ExceptionHandler(InvalidDateRangeException.class)
-    public ResponseEntity<ErrorResponse> handleInvalidDateRangeException(InvalidDateRangeException ex) {
-        ErrorResponse error = new ErrorResponse(
-                HttpStatus.BAD_REQUEST.value(),
-                ex.getMessage(),
-                LocalDateTime.now()
-        );
-        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    @ExceptionHandler(BankIntegrationException.class)
+    public ResponseEntity<ErrorResponse> handleIntegrationException(CustomResponseStatusException e) {
+        return handler(e);
     }
 
-    @ExceptionHandler(Exception.class)
-    public ResponseEntity<ErrorResponse> handleGlobalException(Exception ex) {
-        log.error("Unexpected error occurred", ex);
-        ErrorResponse error = new ErrorResponse(
-                HttpStatus.INTERNAL_SERVER_ERROR.value(),
-                "An unexpected error occurred",
-                LocalDateTime.now()
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ExceptionBody> handleMethodArgumentNotValidException(MethodArgumentNotValidException e) {
+
+        List<String> errorMessages = e.getFieldErrors().stream()
+                .map(FieldError::getDefaultMessage)
+                .toList();
+
+        return new ResponseEntity<>(new ExceptionBody(
+                ExceptionCode.NULL_REQUEST_FIELDS.getValue(),
+                errorMessages.toString(),
+                ExceptionCode.NULL_REQUEST_FIELDS.getReason()
+        ), e.getStatusCode());
+    }
+
+    private ResponseEntity<ExceptionBody> handler(CustomResponseStatusException ex) {
+
+        return new ResponseEntity<>(new ExceptionBody(
+                ex.getErrorCode(),
+                ex.getReason(),
+                ex.getMessage()), ex.getStatusCode()
         );
-        return new ResponseEntity<>(error, HttpStatus.INTERNAL_SERVER_ERROR);
     }
 }

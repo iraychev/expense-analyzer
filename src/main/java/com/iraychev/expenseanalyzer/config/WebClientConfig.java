@@ -23,13 +23,42 @@ public class WebClientConfig {
                 .build();
     }
 
-    private ExchangeFilterFunction logRequest() {
+     private ExchangeFilterFunction logRequest() {
         return ExchangeFilterFunction.ofRequestProcessor(clientRequest -> {
-            log.debug("Request: {} {}", clientRequest.method(), clientRequest.url());
-            clientRequest.headers().forEach((name, values) ->
-                    values.forEach(value -> log.debug("{}: {}", name, value))
-            );
-            return Mono.just(clientRequest);
+            // Capture and log the request method, URL, headers, and body
+            StringBuilder logMessage = new StringBuilder();
+            logMessage.append("Request: ")
+                    .append(clientRequest.method())
+                    .append(" ")
+                    .append(clientRequest.url())
+                    .append("\n");
+
+            // Log headers
+            clientRequest.headers().forEach((name, values) -> {
+                values.forEach(value -> logMessage.append(name)
+                        .append(": ")
+                        .append(value)
+                        .append("\n"));
+            });
+
+            // Capture and log request body (if present)
+            if (clientRequest.body() != null) {
+                return clientRequest.bodyToMono(String.class)
+                        .doOnTerminate(() -> logRequestBody(logMessage.toString(), clientRequest))
+                        .map(body -> clientRequest);
+            } else {
+                logRequestBody(logMessage.toString(), clientRequest);
+                return Mono.just(clientRequest);
+            }
         });
+    }
+
+    private void logRequestBody(StringBuilder logMessage, ClientRequest clientRequest) {
+        // If the request body is available, log it
+        clientRequest.bodyToMono(String.class)
+                .doOnTerminate(() -> {
+                    logMessage.append("Body: ").append(clientRequest.body()).append("\n");
+                    log.info(logMessage.toString()); // Log the complete message at INFO level
+                });
     }
 }

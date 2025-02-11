@@ -5,10 +5,6 @@ import lombok.Data;
 
 import java.time.LocalDateTime;
 
-@Data
-@AllArgsConstructor
-public class ErrorResponse {
-    private int status;
-    private String message;
-    private LocalDateTime timestamp;
+@Accessors(chain = true)
+public record ExceptionBody(String errorCode, String reason, String message)   {
 }
