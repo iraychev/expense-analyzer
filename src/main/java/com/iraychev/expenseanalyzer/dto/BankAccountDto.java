@@ -11,10 +11,10 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class BankAccountDTO {
+public class BankAccountDto {
     private Long id;
-    private String accountId;
-    private String bankName;
-    private String status;
-    private LocalDateTime connectedAt;
+    private String externalAccountId;
+    private String accountName;
+    private String institutionId;
+    private String institutionName;
 }

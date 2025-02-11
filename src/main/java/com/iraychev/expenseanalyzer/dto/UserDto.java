@@ -8,10 +8,9 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class UserDTO {
+public class UserDto {
     private Long id;
-    private String username;
     private String email;
-    private List<TransactionDTO> transactions;
-    private List<BankAccountDTO> bankAccounts;
+    private String name;
+    private List<BankAccountDto> bankAccounts;
 }
