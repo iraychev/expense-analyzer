@@ -1,13 +1,16 @@
 package com.iraychev.expenseanalyzer.config;
 
-import lombok.extern.slf4j.Slf4j;
 import lombok.Getter;
 import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpHeaders;
+import org.springframework.web.reactive.function.client.ClientRequest;
 import org.springframework.web.reactive.function.client.ExchangeFilterFunction;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
@@ -16,6 +19,7 @@ import java.util.Collections;
 
 @Slf4j
 @Configuration
+@EnableCaching
 public class WebClientConfig {
 
     @Value("${gocardless.api.base-url}")
@@ -24,13 +28,11 @@ public class WebClientConfig {
     @Value("${gocardless.api.refresh-token}")
     private String refreshToken;
 
-    @Value("${gocardless.api.access-token}")
-    private String accessToken;
-
     @Value("${gocardless.api.access-token-expiry}")
     private Long accessTokenExpiry;
 
     private static final String BEARER = "Bearer ";
+    private String accessToken;
 
     @Bean
     public WebClient webClient(WebClient.Builder builder) {
@@ -38,7 +40,7 @@ public class WebClientConfig {
                 .baseUrl(apiBaseUrl)
                 .defaultHeader("Content-Type", "application/json")
                 .filter(logRequest())
-                .filter(tokenExchangeFilter())  // Filter to attach token
+                .filter(tokenExchangeFilter())
                 .build();
     }
 
@@ -58,33 +60,15 @@ public class WebClientConfig {
                         .append("\n"));
             });
 
-            if (clientRequest.body() != null) {
-                return clientRequest.bodyToMono(String.class)
-                        .doOnTerminate(() -> logRequestBody(logMessage, clientRequest))
-                        .map(body -> clientRequest);
-            } else {
-                logRequestBody(logMessage, clientRequest);
-                return Mono.just(clientRequest);
-            }
+            return clientRequest.bodyToMono(String.class)
+                    .doOnNext(body -> logMessage.append("Body: ").append(body).append("\n"))
+                    .doOnTerminate(() -> log.info(logMessage.toString()))
+                    .then(Mono.just(clientRequest));
         });
-    }
-
-    private void logRequestBody(StringBuilder logMessage, ClientRequest clientRequest) {
-        if (clientRequest.body() != null) {
-            clientRequest.bodyToMono(String.class)
-                    .doOnTerminate(() -> {
-                        logMessage.append("Body: ").append(clientRequest.body()).append("\n");
-                        log.info(logMessage.toString());
-                    })
-                    .subscribe();
-        } else {
-            log.info(logMessage.toString());
-        }
     }
 
     private ExchangeFilterFunction tokenExchangeFilter() {
         return ExchangeFilterFunction.ofRequestProcessor(clientRequest -> {
-            // Attach token if it's available
             String token = getAccessToken();
             if (token != null) {
                 return Mono.just(clientRequest.mutate()
@@ -95,8 +79,8 @@ public class WebClientConfig {
         });
     }
 
-    // Get Access Token (either from cache or refresh if expired)
-    private String getAccessToken() {
+    @Cacheable("accessToken")
+    public String getAccessToken() {
         if (isAccessTokenExpired()) {
             refreshAccessToken();
         }
@@ -108,6 +92,7 @@ public class WebClientConfig {
         return currentTime >= accessTokenExpiry;
     }
 
+    @CacheEvict(value = "accessToken", allEntries = true)
     private void refreshAccessToken() {
         log.info("Refreshing Access Token...");
         WebClient client = WebClient.builder()
@@ -120,16 +105,17 @@ public class WebClientConfig {
                 .bodyValue(Collections.singletonMap("refresh", refreshToken))
                 .retrieve()
                 .bodyToMono(TokenResponse.class)
-                .doOnTerminate(() -> log.info("Access Token Refreshed"))
-                .subscribe(response -> {
+                .doOnNext(response -> {
                     accessToken = response.getAccess();
                     accessTokenExpiry = System.currentTimeMillis() + (response.getAccessExpires() * 1000);
                     log.info("New Access Token: {}", accessToken);
-                });
+                })
+                .block();
     }
 }
+
 @Getter @Setter
 public static class TokenResponse {
-        private String access;
-        private Long accessExpires;
+    private String access;
+    private Long accessExpires;
 }
