@@ -1,8 +1,6 @@
 package com.iraychev.expenseanalyzer.service;
 
 import com.iraychev.expenseanalyzer.domain.entity.BankAccount;
-import com.iraychev.expenseanalyzer.domain.entity.Transaction;
-import com.iraychev.expenseanalyzer.domain.enums.TransactionType;
 import com.iraychev.expenseanalyzer.dto.BankAccountDto;
 import com.iraychev.expenseanalyzer.dto.UserDto;
 import com.iraychev.expenseanalyzer.domain.entity.User;
@@ -17,9 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.time.LocalDate;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 @Transactional

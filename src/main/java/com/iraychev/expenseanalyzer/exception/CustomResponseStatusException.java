@@ -1,3 +1,9 @@
+package com.iraychev.expenseanalyzer.exception;
+
+import lombok.Getter;
+import org.springframework.http.HttpStatusCode;
+import org.springframework.web.server.ResponseStatusException;
+
 @Getter
 public class CustomResponseStatusException extends ResponseStatusException {
     private final String errorCode;

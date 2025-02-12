@@ -3,7 +3,6 @@ package com.iraychev.expenseanalyzer.controller;
 import com.iraychev.expenseanalyzer.dto.BankAccountDto;
 import com.iraychev.expenseanalyzer.dto.UserDto;
 import com.iraychev.expenseanalyzer.domain.entity.User;
-import com.iraychev.expenseanalyzer.mapper.UserMapper;
 import com.iraychev.expenseanalyzer.service.UserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

@@ -1,10 +1,7 @@
 package com.iraychev.expenseanalyzer.service;
 
 import com.iraychev.expenseanalyzer.domain.enums.TransactionType;
-import com.iraychev.expenseanalyzer.dto.TransactionDto;
 import com.iraychev.expenseanalyzer.domain.entity.Transaction;
-import com.iraychev.expenseanalyzer.exception.InvalidDateRangeException;
-import com.iraychev.expenseanalyzer.mapper.TransactionMapper;
 import com.iraychev.expenseanalyzer.repository.BankAccountRepository;
 import com.iraychev.expenseanalyzer.repository.TransactionRepository;
 import lombok.RequiredArgsConstructor;
@@ -14,11 +11,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -37,13 +30,10 @@ public class TransactionService {
     }
 
     public TransactionType determineTransactionType(String goCardlessType) {
-        switch (goCardlessType.toLowerCase()) {
-            case "credit":
-                return TransactionType.INCOME;
-            case "debit":
-                return TransactionType.EXPENSE;
-            default:
-                return TransactionType.TRANSFER;
-        }
+        return switch (goCardlessType.toLowerCase()) {
+            case "credit" -> TransactionType.INCOME;
+            case "debit" -> TransactionType.EXPENSE;
+            default -> TransactionType.TRANSFER;
+        };
     }
 }

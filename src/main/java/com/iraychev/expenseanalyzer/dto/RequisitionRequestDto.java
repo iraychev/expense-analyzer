@@ -14,10 +14,10 @@ import javax.annotation.Nullable;
 @Builder
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class RequisitionRequestDto {
-    private String redirectUrl;
+    private String redirect;
     private String institutionId;
     private String reference;
     @Nullable
-    private String agreementId;
+    private String agreement;
     private String userLanguage;
 }

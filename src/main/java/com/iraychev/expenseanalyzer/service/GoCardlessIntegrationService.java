@@ -1,19 +1,16 @@
 package com.iraychev.expenseanalyzer.service;
 
-import com.gocardless.GoCardlessClient;
-import com.gocardless.resources.Payment;
 import com.iraychev.expenseanalyzer.domain.entity.Transaction;
 import com.iraychev.expenseanalyzer.dto.RequisitionDto;
 import com.iraychev.expenseanalyzer.dto.RequisitionRequestDto;
 import com.iraychev.expenseanalyzer.dto.TransactionsResponse;
-import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Mono;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Collections;
 import java.util.HashMap;
@@ -29,38 +26,36 @@ public class GoCardlessIntegrationService {
     @Value("${gocardless.api.base-url}")
     private String apiBaseUrl;
 
-    // In production the access token should be securely managed.
-    @Value("${gocardless.api.access-token}")
-    private String accessToken;
-
     public GoCardlessIntegrationService(WebClient webClient) {
         this.webClient = webClient;
     }
 
-    public String getApiBaseUrl() {
-        return apiBaseUrl;
-    }
-
-    public String getAccessToken() {
-        return accessToken;
-    }
-
     public RequisitionDto createRequisition(RequisitionRequestDto requestDto) {
         Map<String, Object> payload = new HashMap<>();
-        payload.put("redirect", requestDto.getRedirectUrl());
+        payload.put("redirect", requestDto.getRedirect());
         payload.put("institution_id", requestDto.getInstitutionId());
         payload.put("reference", requestDto.getReference());
-
         payload.put("user_language", requestDto.getUserLanguage());
+
         log.info("Request DTO: {}", requestDto);
         log.info("Request body: {}", payload);
+
         return webClient.post()
                 .uri(apiBaseUrl + "/requisitions/")
-                .header("Authorization", "Bearer " + accessToken)
                 .accept(MediaType.APPLICATION_JSON)
                 .bodyValue(payload)
                 .retrieve()
-                .bodyToMono(RequisitionDto.class)
+                .toEntity(RequisitionDto.class)  // Capture the entire response entity
+                .doOnNext(entity -> log.info("Response status: {}, body: {}", entity.getStatusCode(), entity.getBody()))
+                .flatMap(responseEntity -> {
+                    if (responseEntity.getBody() == null) {
+                        log.error("Received 201 Created with empty body. Check API expectations.");
+                        return Mono.error(new RuntimeException("Empty body response"));
+                    }
+                    return Mono.just(responseEntity.getBody());
+                })
+                .doOnNext(dto -> log.info("Response from GoCardless: {}", dto))
+                .doOnError(error -> log.error("Error from GoCardless: ", error))
                 .block();
     }
 
@@ -68,7 +63,6 @@ public class GoCardlessIntegrationService {
     public RequisitionDto getRequisition(String requisitionId) {
         return webClient.get()
                 .uri(apiBaseUrl + "/requisitions/" + requisitionId + "/")
-                .header("Authorization", "Bearer " + accessToken)
                 .retrieve()
                 .bodyToMono(RequisitionDto.class)
                 .block();

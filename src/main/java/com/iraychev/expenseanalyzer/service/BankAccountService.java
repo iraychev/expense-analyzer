@@ -38,7 +38,7 @@ public class BankAccountService {
             for (String accountId : requisition.getAccounts()) {
                 dtos.add(BankAccountDto.builder()
                         .externalAccountId(accountId)
-                        .accountName("Account " + accountId) // Replace with actual mapping if available
+                        .accountName("Account " + accountId)
                         .institutionId("MappedInstitutionId")
                         .institutionName("MappedInstitutionName")
                         .build());
