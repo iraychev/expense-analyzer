@@ -43,18 +43,22 @@ public class UserService {
         return userMapper.toDTO(savedUser);
     }
 
-    public UserDto linkBankConnection(Long userId, BankConnectionDto bankConnectionDto) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
-        boolean exists = user.getBankConnections().stream()
-                .anyMatch(connection connection.getAccountId().equals(bankConnectionDto.getAccountId()));
-        if (exists) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Bank account already connected");
-        }
+    public UserDto linkBankConnection(String userEmail, String requisitionId) {
+        
+            bankConnectionService.syncTransactions(userEmail, requisitionId)
+            User updatedUser = userRepository.findByEmail(userEmail);
+            return userMapper.toDTO(updatedUser);
+        // User user = userRepository.findById(userId)
+        //         .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        // boolean exists = user.getBankConnections().stream()
+        //         .anyMatch(connection connection.getAccountId().equals(bankConnectionDto.getAccountId()));
+        // if (exists) {
+        //     throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Bank account already connected");
+        // }
 
-        user.getBankConnections().add(connectionMapper.toEntity(bankConnectionDto);
-        User savedUser = userRepository.save(user);
+        // user.getBankConnections().add(connectionMapper.toEntity(bankConnectionDto));
+        // User savedUser = userRepository.save(user);
 
-        return userMapper.toDTO(savedUser);
+        // return userMapper.toDTO(savedUser);
     }
 }

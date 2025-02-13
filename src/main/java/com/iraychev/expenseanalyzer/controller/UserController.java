@@ -30,10 +30,10 @@ public class UserController {
         return ResponseEntity.status(HttpStatus.CREATED).body(createdUser);
     }
 
-    @PostMapping("/{userId}/bank-accounts/link")
-    public ResponseEntity<User> linkBankConnection(@PathVariable Long userId,
-                                                @RequestBody BankConnectionDto bankConnectionDto) {
-        User updatedUser = userService.linkBankConnection(userId, bankConnectionDto);
+    @PostMapping("/{userEmail}/bank-accounts/link")
+    public ResponseEntity<User> linkBankConnection(@PathVariable String userEmail,
+                                                @RequestParam String requisitionId) {
+        User updatedUser = userService.linkBankConnection(userEmail, requisitionId);
         return ResponseEntity.ok(updatedUser);
     }
 }
