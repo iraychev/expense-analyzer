@@ -24,6 +24,9 @@ public class Transaction {
     @Column(nullable = false)
     private String currency;
 
+    @Column
+    private LocalDateTime valueDate;
+    
     @Column(nullable = false)
     private LocalDateTime transactionDate;
 
@@ -34,6 +37,6 @@ public class Transaction {
     private TransactionType type;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "bank_account_id", nullable = false)
+    @JoinColumn(name = "bank_connect_id", nullable = false)
     private BankConnection bankConnection;
 }

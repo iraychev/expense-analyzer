@@ -11,7 +11,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@Table(name = "bank_accounts")
+@Table(name = "bank_connections")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -33,13 +33,13 @@ public class BankConnection {
     @Column(nullable = false)
     private String requisitionId;
 
-    @Column(nullable = true)
+    @OneToMnay(mappedBy = accounts, cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<BankAccount> accounts = new ArrayList<>();
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    @OneToMany(mappedBy = "BankConnection", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "bankConnection", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Transaction> transactions = new ArrayList<>();
 }

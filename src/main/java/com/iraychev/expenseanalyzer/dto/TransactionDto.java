@@ -11,10 +11,11 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @Builder
 public class TransactionDto {
-    private Long id;
     private BigDecimal amount;
     private String currency;
+    private LocalDateTime valuenDate;
     private LocalDateTime transactionDate;
     private String description;
     private TransactionType type;
+    private BankConnectionDto bankConnection;
 }
