@@ -6,7 +6,6 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -24,22 +23,20 @@ public class BankConnection {
     @Column(nullable = false)
     private String reference;
 
-    @Column(nullable = false)
+    @Column(name = "institution_id", nullable = false)
     private String institutionId;
 
-    @Column(nullable = true)
+    @Column(name = "institution_name")
     private String institutionName;
 
-    @Column(nullable = false)
+    @Column(name = "requisition_d", nullable = false)
     private String requisitionId;
-
-    @OneToMnay(mappedBy = accounts, cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<BankAccount> accounts = new ArrayList<>();
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
     @OneToMany(mappedBy = "bankConnection", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<Transaction> transactions = new ArrayList<>();
+    private List<BankAccount> accounts = new ArrayList<>();
+
 }

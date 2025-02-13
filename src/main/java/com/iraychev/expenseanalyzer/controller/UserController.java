@@ -1,16 +1,15 @@
 package com.iraychev.expenseanalyzer.controller;
 
-import com.iraychev.expenseanalyzer.dto.BankConnectionDto;
 import com.iraychev.expenseanalyzer.dto.UserDto;
-import com.iraychev.expenseanalyzer.domain.entity.User;
 import com.iraychev.expenseanalyzer.service.UserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+
+import static org.springframework.http.HttpStatus.CREATED;
+import static org.springframework.http.HttpStatus.OK;
 
 @RestController
 @RequestMapping("/api/v1/users")
@@ -31,24 +30,24 @@ public class UserController {
 
     @ResponseStatus(OK)
     @GetMapping("/email/{email}")
-    public UserDto getUserByEmail(String email) {
+    public UserDto getByEmail(@PathVariable String email) {
         log.info("Received request to get User with emai: {}", email);
 
-        return userService.getUserByEmail(email);
+        return userService.getByEmail(email);
     }
 
     @ResponseStatus(CREATED)
     @PostMapping
     public UserDto create(@RequestBody UserDto userDto) {
-        log.info("Received request to create User: {}", userRequest);
+        log.info("Received request to create User: {}", userDto);
         return userService.createUser(userDto);
     }
 
     @ResponseStatus(OK)
     @PostMapping("/{userEmail}/link-bank")
     public UserDto linkBankConnection(@PathVariable String userEmail,
-                                                @RequestParam String requisitionId) {
-        
+                                      @RequestParam String requisitionId) {
+
         log.info("Linking user with email: {} with Bank Connection with requisition id: {}", userEmail, requisitionId);
         return userService.linkBankConnection(userEmail, requisitionId);
     }

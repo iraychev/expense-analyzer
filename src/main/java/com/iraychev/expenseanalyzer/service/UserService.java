@@ -1,20 +1,15 @@
 package com.iraychev.expenseanalyzer.service;
 
-import com.iraychev.expenseanalyzer.domain.entity.BankConnection;
-import com.iraychev.expenseanalyzer.dto.BankConnectionDto;
 import com.iraychev.expenseanalyzer.dto.UserDto;
 import com.iraychev.expenseanalyzer.domain.entity.User;
+import com.iraychev.expenseanalyzer.exception.AlreadyExistingResourceException;
 import com.iraychev.expenseanalyzer.exception.ResourceNotFoundException;
 import com.iraychev.expenseanalyzer.mapper.UserMapper;
-import com.iraychev.expenseanalyzer.mapper.BankConnectionMapper;
-import com.iraychev.expenseanalyzer.repository.BankConnectionRepository;
 import com.iraychev.expenseanalyzer.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
@@ -24,11 +19,8 @@ import java.util.List;
 @RequiredArgsConstructor
 public class UserService {
     private final UserRepository userRepository;
-    private final BankConnectionRepository BankConnectionRepository;
-    private final GoCardlessIntegrationService goCardlessIntegrationService;
-    private final TransactionService transactionService;
     private final UserMapper userMapper;
-    private final BankConnectionMapper connectionMapper;
+    private final BankConnectionService bankConnectionService;
 
     public List<UserDto> getAllUsers() {
         List<User> users = userRepository.findAll();
@@ -38,15 +30,21 @@ public class UserService {
     public UserDto createUser(UserDto userDto) {
         if (userRepository.findByEmail(userDto.getEmail()).isPresent()) {
             // TODO: define new exception
-            throw new CustomResponseStatusException(HttpStatus.BAD_REQUEST, "User with this email already exists");
+            throw new AlreadyExistingResourceException("User with this email already exists");
         }
         User savedUser = userRepository.save(userMapper.toEntity(userDto));
         return userMapper.toDTO(savedUser);
     }
 
     public UserDto linkBankConnection(String userEmail, String requisitionId) {
-        bankConnectionService.syncTransactions(userEmail, requisitionId)
-        User updatedUser = userRepository.findByEmail(userEmail);
+        bankConnectionService.syncTransactions(userEmail, requisitionId);
+        User updatedUser = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found."));
         return userMapper.toDTO(updatedUser);
+    }
+
+    public UserDto getByEmail(String userEmail) {
+        User foundUser = userRepository.findByEmail(userEmail).orElseThrow(() -> new ResourceNotFoundException("User not found."));
+        return userMapper.toDTO(foundUser);
     }
 }

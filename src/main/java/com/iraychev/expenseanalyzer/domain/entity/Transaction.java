@@ -5,7 +5,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.LocalDate;
 
 @Entity
 @Table(name = "transactions")
@@ -25,10 +25,10 @@ public class Transaction {
     private String currency;
 
     @Column
-    private LocalDateTime valueDate;
+    private LocalDate valueDate;
     
     @Column(nullable = false)
-    private LocalDateTime transactionDate;
+    private LocalDate transactionDate;
 
     @Column
     private String description;
@@ -37,6 +37,6 @@ public class Transaction {
     private TransactionType type;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "bank_connect_id", nullable = false)
-    private BankConnection bankConnection;
+    @JoinColumn(name = "bank_account_id", nullable = false)
+    private BankAccount bankAccount;
 }

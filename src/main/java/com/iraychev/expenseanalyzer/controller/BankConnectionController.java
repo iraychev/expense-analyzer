@@ -1,9 +1,6 @@
 package com.iraychev.expenseanalyzer.controller;
 
-import com.iraychev.expenseanalyzer.dto.BankConnectionDto;
-import com.iraychev.expenseanalyzer.dto.RequisitionDto;
-import com.iraychev.expenseanalyzer.dto.RequisitionRequestDto;
-import com.iraychev.expenseanalyzer.dto.TransactionDto;
+import com.iraychev.expenseanalyzer.dto.*;
 import com.iraychev.expenseanalyzer.service.BankConnectionService;
 import lombok.extern.slf4j.Slf4j;
 import lombok.RequiredArgsConstructor;
@@ -29,16 +26,9 @@ public class BankConnectionController {
     }
 
     // Step 5: List accounts from a requisition
-    @GetMapping("/requisitions/{requisitionId}/connections")
-    public ResponseEntity<List<BankConnectionDto>> listBankConnections(@PathVariable String requisitionId) {
-        List<BankConnectionDto> connections = bankConnectionService.listAccounts(requisitionId);
-        return ResponseEntity.ok(connections);
-    }
-
-    // Step 6: Sync transactions for a bank account
-    @PostMapping("/{bankConnectionId}/sync")
-    public ResponseEntity<List<TransactionDto>> syncTransactions(@PathVariable Long bankConnectionId) {
-        List<TransactionDto> transactions = bankConnectionService.syncTransactions(bankConnectionId);
-        return ResponseEntity.ok(transactions);
+    @ResponseStatus(HttpStatus.OK)
+    @GetMapping("/requisitions/{requisitionId}/accounts")
+    public List<BankAccountDto> listAccounts(@PathVariable String requisitionId) {
+        return bankConnectionService.listAccounts(requisitionId);
     }
 }

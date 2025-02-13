@@ -1,13 +1,9 @@
 package com.iraychev.expenseanalyzer.service;
 
-import com.iraychev.expenseanalyzer.domain.entity.BankConnection;
-import com.iraychev.expenseanalyzer.domain.entity.Transaction;
-import com.iraychev.expenseanalyzer.dto.BankConnectionDto;
-import com.iraychev.expenseanalyzer.dto.RequisitionDto;
-import com.iraychev.expenseanalyzer.dto.RequisitionRequestDto;
-import com.iraychev.expenseanalyzer.dto.TransactionDto;
+import com.iraychev.expenseanalyzer.dto.*;
 import com.iraychev.expenseanalyzer.exception.ResourceNotFoundException;
-import com.iraychev.expenseanalyzer.repository.BankConnectionRepository;
+import com.iraychev.expenseanalyzer.mapper.UserMapper;
+import com.iraychev.expenseanalyzer.repository.UserRepository;
 import lombok.extern.slf4j.Slf4j;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -15,7 +11,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -23,9 +18,9 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class BankConnectionService {
     private final GoCardlessIntegrationService goCardlessIntegrationService;
-    private final BankConnectionRepository bankConnectionRepository;
     private final TransactionService transactionService;
-    private final TransactionMapper transactionMapper;
+    private final UserRepository userRepository;
+    private final UserMapper userMapper;
 
     public RequisitionDto createRequisition(RequisitionRequestDto requestDto) {
         return goCardlessIntegrationService.createRequisition(requestDto);
@@ -36,35 +31,36 @@ public class BankConnectionService {
         List<BankAccountDto> accounts = new ArrayList<>();
         if (requisition.getAccounts() != null) {
             for (String accountId : requisition.getAccounts()) {
-                dtos.add(BankAccountDto.builder()
+                accounts.add(BankAccountDto.builder()
                         .accountId(accountId)
                         .iban("Not yet known")
-                        .transactions(new ArrayList<TransactionDto())
+                        .transactions(new ArrayList<>())
                         .build());
             }
         }
 
-        return dtos;
+        return accounts;
     }
 
     public List<TransactionDto> syncTransactions(String userEmail, String requisitionId) {
         RequisitionDto requisition = goCardlessIntegrationService.getRequisition(requisitionId);
-        List<BankAccount> accounts = listAccounts(requisitionId)''
-        UserDto user= userService.getByEmail(userEMail);
+        List<BankAccountDto> accounts = listAccounts(requisitionId);
+        UserDto user = userMapper.toDTO(userRepository.findByEmail(userEmail).orElseThrow(() -> new ResourceNotFoundException("User not found")));
 
         BankConnectionDto bankConnection = BankConnectionDto.builder()
                         .requisitionId(requisition.getId())
-                        .reference(requisition.getReference()
-                        .institutionId(requisition.getInstitutionID())
+                        .reference(requisition.getReference())
+                        .institutionId(requisition.getInstitutionId())
                         .institutionName("nz oshte")
                         .accounts(accounts)
-                        .build()) 
+                        .build();
+
         List<TransactionDto> transactions = goCardlessIntegrationService.fetchTransactions(accounts);
-        transactions.foreach(transaction -> transaction.bankConnection = bankConnection);
+        transactions.forEach(transaction -> transaction.setBankConnection(bankConnection));
         bankConnection.setTransactions(transactions);
 
-        List<Transaction> savedTransactions = transactionService.saveTransactions(transactions);
-        user.bankConnections.add(bankConnection);
-        return savedTransactions.stream().map(transactionMapper::toDTO).toList();
+        user.getBankConnections().add(bankConnection);
+
+        return transactionService.saveTransactions(transactions);
     }
 }

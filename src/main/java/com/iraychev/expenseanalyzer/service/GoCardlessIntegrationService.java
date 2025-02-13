@@ -1,9 +1,8 @@
 package com.iraychev.expenseanalyzer.service;
 
-import com.iraychev.expenseanalyzer.domain.entity.Transaction;
-import com.iraychev.expenseanalyzer.dto.RequisitionDto;
-import com.iraychev.expenseanalyzer.dto.RequisitionRequestDto;
-import com.iraychev.expenseanalyzer.dto.TransactionsResponse;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.iraychev.expenseanalyzer.domain.enums.TransactionType;
+import com.iraychev.expenseanalyzer.dto.*;
 import lombok.extern.slf4j.Slf4j;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -12,11 +11,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @Service
 @Slf4j
@@ -64,12 +61,12 @@ public class GoCardlessIntegrationService {
                 .block();
     }
 
-    public List<TransactionDto> fetchTransactions(List<BankAccount> accounts) {
+    public List<TransactionDto> fetchTransactions(List<BankAccountDto> accounts) {
         List<TransactionDto> allTransactions = new ArrayList<>();
         accounts.forEach(account -> {
         webClient.get()
             .uri(uriBuilder -> uriBuilder
-                .path(apiBaseUrl + "/accounts/" + account.getAccountId() + "/transactions/")
+                .path("/accounts/" + account.getAccountId() + "/transactions/")
                 .queryParam("date_from", LocalDate.now().minusMonths(3))
                 .queryParam("date_to", LocalDate.now())
                 .build())
@@ -83,10 +80,10 @@ public class GoCardlessIntegrationService {
                         TransactionDto transactionDto = TransactionDto.builder()
                             .amount(new BigDecimal(transactionNode.path("transactionAmount").path("amount").asText()))
                             .currency(transactionNode.path("transactionAmount").path("currency").asText())
-                            .valueDate(LocalDateTime.parse(transactionNode.path("valueDate").asText()))
-                            .transactionDate(LocalDateTime.parse(transactionNode.path("bookingDate").asText()))
+                            .valueDate(LocalDate.parse(transactionNode.path("valueDate").asText()))
+                            .transactionDate(LocalDate.parse(transactionNode.path("bookingDate").asText()))
                             .description(transactionNode.path("remittanceInformationUnstructured").asText())
-                            .type(TransactionType.valueOf(transactionNode.path("bankTransactionCode").asText()))
+                            .type(TransactionType.UNKNOWN)
                             .bankConnection(new BankConnectionDto())
                             .build();
                         allTransactions.add(transactionDto);

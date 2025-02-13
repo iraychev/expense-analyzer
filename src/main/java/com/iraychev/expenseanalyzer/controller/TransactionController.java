@@ -14,6 +14,8 @@ import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import static org.springframework.http.HttpStatus.OK;
+
 @RestController
 @RequestMapping("/api/v1/bank-accounts")
 @Slf4j
@@ -24,27 +26,24 @@ public class TransactionController {
     private final GoCardlessIntegrationService goCardlessService;
     private final TransactionService transactionService;
 
-    @GetMapping("/user/{userId}/transactions")
-    @REsponseStatus(OK)
-    public Page<TransactionDto> getUserTransactions(
-            @PathVariable Long userId,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size
-    ) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by("transactionDate").descending());
-        Page<Transaction> transactionsPage = transactionService.getUserTransactions(userId, pageable);
-
-        Page<TransactionDto> transactionDtos = transactionsPage.map(transaction ->
-                TransactionDto.builder()
-                        .id(transaction.getId())
-                        .amount(transaction.getAmount())
-                        .currency(transaction.getCurrency())
-                        .transactionDate(transaction.getTransactionDate())
-                        .description(transaction.getDescription())
-                        .type(transaction.getType())
-                        .build()
-        );
-
-        return transactionDtos;
-    }
+//    @GetMapping("/user/{userId}/transactions")
+//    @ResponseStatus(OK)
+//    public Page<TransactionDto> getUserTransactions(
+//            @PathVariable Long userId,
+//            @RequestParam(defaultValue = "0") int page,
+//            @RequestParam(defaultValue = "20") int size
+//    ) {
+//        Pageable pageable = PageRequest.of(page, size, Sort.by("transactionDate").descending());
+//        Page<Transaction> transactionsPage = transactionService.getUserTransactions(userId, pageable);
+//
+//        return transactionsPage.map(transaction ->
+//                TransactionDto.builder()
+//                        .amount(transaction.getAmount())
+//                        .currency(transaction.getCurrency())
+//                        .transactionDate(transaction.getTransactionDate())
+//                        .description(transaction.getDescription())
+//                        .type(transaction.getType())
+//                        .build()
+//        );
+//    }
 }

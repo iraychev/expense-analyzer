@@ -6,10 +6,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-
 
 @Entity
 @Table(name = "bank_accounts")
@@ -23,9 +21,14 @@ public class BankAccount {
     private Long id;
 
     private String iban;
+
     @Column(name= "account_id")
     private String accountId;
 
-    private List<Transaction> transactions = new ArrayList<>();
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "bank_connection_id", nullable = false)
+    private BankConnection bankConnection;
 
+    @OneToMany(mappedBy = "bankAccount", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<Transaction> transactions = new ArrayList<>();
 }

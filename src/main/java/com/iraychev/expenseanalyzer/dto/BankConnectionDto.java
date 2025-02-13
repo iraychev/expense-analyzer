@@ -1,13 +1,12 @@
 package com.iraychev.expenseanalyzer.dto;
 
+import com.iraychev.expenseanalyzer.domain.entity.User;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import java.util.ArrayList;
 import java.util.List;
-
-import java.time.LocalDateTime;
 
 @Data
 @NoArgsConstructor
@@ -18,8 +17,8 @@ public class BankConnectionDto {
     private String institutionId;
     private String institutionName;
     private String requisitionId;
-    private List<BankAccountDTO> accounts = new ArrayList<>();
+    private List<BankAccountDto> accounts = new ArrayList<>();
     private User user;
-    private List<TransactionDTO> transactions = new ArrayList<>();
+    private List<TransactionDto> transactions = new ArrayList<>();
 
 }

@@ -4,7 +4,7 @@ import com.iraychev.expenseanalyzer.domain.enums.TransactionType;
 import lombok.*;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.LocalDate;
 
 @Data
 @NoArgsConstructor
@@ -13,8 +13,8 @@ import java.time.LocalDateTime;
 public class TransactionDto {
     private BigDecimal amount;
     private String currency;
-    private LocalDateTime valuenDate;
-    private LocalDateTime transactionDate;
+    private LocalDate valueDate;
+    private LocalDate transactionDate;
     private String description;
     private TransactionType type;
     private BankConnectionDto bankConnection;
