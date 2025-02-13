@@ -37,28 +37,16 @@ public class UserService {
 
     public UserDto createUser(UserDto userDto) {
         if (userRepository.findByEmail(userDto.getEmail()).isPresent()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "User with this email already exists");
+            // TODO: define new exception
+            throw new CustomResponseStatusException(HttpStatus.BAD_REQUEST, "User with this email already exists");
         }
         User savedUser = userRepository.save(userMapper.toEntity(userDto));
         return userMapper.toDTO(savedUser);
     }
 
     public UserDto linkBankConnection(String userEmail, String requisitionId) {
-        
-            bankConnectionService.syncTransactions(userEmail, requisitionId)
-            User updatedUser = userRepository.findByEmail(userEmail);
-            return userMapper.toDTO(updatedUser);
-        // User user = userRepository.findById(userId)
-        //         .orElseThrow(() -> new ResourceNotFoundException("User not found"));
-        // boolean exists = user.getBankConnections().stream()
-        //         .anyMatch(connection connection.getAccountId().equals(bankConnectionDto.getAccountId()));
-        // if (exists) {
-        //     throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Bank account already connected");
-        // }
-
-        // user.getBankConnections().add(connectionMapper.toEntity(bankConnectionDto));
-        // User savedUser = userRepository.save(user);
-
-        // return userMapper.toDTO(savedUser);
+        bankConnectionService.syncTransactions(userEmail, requisitionId)
+        User updatedUser = userRepository.findByEmail(userEmail);
+        return userMapper.toDTO(updatedUser);
     }
 }

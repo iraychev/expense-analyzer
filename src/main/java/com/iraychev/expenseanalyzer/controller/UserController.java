@@ -19,21 +19,37 @@ import java.util.List;
 public class UserController {
     private final UserService userService;
 
+    @ResponseStatus(OK)
     @GetMapping
-    public ResponseEntity<List<UserDto>> getAllUsers() {
-        return new ResponseEntity<>(userService.getAllUsers(), HttpStatus.OK);
+    public List<UserDto> getAll() {
+        log.info("Getting all users");
+        List<UserDto> users = userService.getAllUsers();
+
+        log.debug("Users: {}", users);
+        return users;
     }
 
+    @ResponseStatus(OK)
+    @GetMapping("/email/{email}")
+    public UserDto getUserByEmail(String email) {
+        log.info("Received request to get User with emai: {}", email);
+
+        return userService.getUserByEmail(email);
+    }
+
+    @ResponseStatus(CREATED)
     @PostMapping
-    public ResponseEntity<User> createUser(@RequestBody UserDto userDto) {
-        User createdUser = userService.createUser(userDto);
-        return ResponseEntity.status(HttpStatus.CREATED).body(createdUser);
+    public UserDto create(@RequestBody UserDto userDto) {
+        log.info("Received request to create User: {}", userRequest);
+        return userService.createUser(userDto);
     }
 
-    @PostMapping("/{userEmail}/bank-accounts/link")
-    public ResponseEntity<User> linkBankConnection(@PathVariable String userEmail,
+    @ResponseStatus(OK)
+    @PostMapping("/{userEmail}/link-bank")
+    public UserDto linkBankConnection(@PathVariable String userEmail,
                                                 @RequestParam String requisitionId) {
-        User updatedUser = userService.linkBankConnection(userEmail, requisitionId);
-        return ResponseEntity.ok(updatedUser);
+        
+        log.info("Linking user with email: {} with Bank Connection with requisition id: {}", userEmail, requisitionId);
+        return userService.linkBankConnection(userEmail, requisitionId);
     }
 }

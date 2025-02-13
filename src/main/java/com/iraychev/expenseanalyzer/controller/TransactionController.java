@@ -18,13 +18,15 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/v1/bank-accounts")
 @Slf4j
 @RequiredArgsConstructor
-public class BankIntegrationController {
+// TODO: delete or move to user controller
+public class TransactionController {
     private final UserService userService;
     private final GoCardlessIntegrationService goCardlessService;
     private final TransactionService transactionService;
 
     @GetMapping("/user/{userId}/transactions")
-    public ResponseEntity<Page<TransactionDto>> getUserTransactions(
+    @REsponseStatus(OK)
+    public Page<TransactionDto> getUserTransactions(
             @PathVariable Long userId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size
@@ -43,6 +45,6 @@ public class BankIntegrationController {
                         .build()
         );
 
-        return ResponseEntity.ok(transactionDtos);
+        return transactionDtos;
     }
 }

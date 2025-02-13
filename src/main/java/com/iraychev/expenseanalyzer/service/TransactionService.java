@@ -17,6 +17,7 @@ import java.util.List;
 @Transactional
 @Slf4j
 @RequiredArgsConstructor
+//TODO: delete or move this too
 public class TransactionService {
     private final TransactionRepository transactionRepository;
     private final BankConnectionRepository bankConnectionRepository;
