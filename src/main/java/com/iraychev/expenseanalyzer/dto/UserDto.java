@@ -12,5 +12,5 @@ public class UserDto {
     private Long id;
     private String email;
     private String name;
-    private List<BankAccountDto> bankAccounts;
+    private List<BankConnectionDto> bankConnections;
 }

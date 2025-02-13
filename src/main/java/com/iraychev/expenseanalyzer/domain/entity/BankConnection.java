@@ -16,27 +16,30 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class BankAccount {
+public class BankConnection {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @Column(nullable = false)
-    private String accountId;
-
-    @Column(nullable = false)
-    private String accountName;
+    private String reference;
 
     @Column(nullable = false)
     private String institutionId;
 
-    @Column(nullable = false)
+    @Column(nullable = true)
     private String institutionName;
+
+    @Column(nullable = false)
+    private String requisitionId;
+
+    @Column(nullable = true)
+    private List<BankAccount> accounts = new ArrayList<>();
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    @OneToMany(mappedBy = "bankAccount", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "BankConnection", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Transaction> transactions = new ArrayList<>();
 }

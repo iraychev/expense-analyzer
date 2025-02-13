@@ -26,5 +26,5 @@ public class User {
     private String name;
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<BankAccount> bankAccounts = new ArrayList<>();
+    private List<BankConnection> bankConnections = new ArrayList<>();
 }

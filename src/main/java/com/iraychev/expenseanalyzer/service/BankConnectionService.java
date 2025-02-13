@@ -1,13 +1,13 @@
 package com.iraychev.expenseanalyzer.service;
 
-import com.iraychev.expenseanalyzer.domain.entity.BankAccount;
+import com.iraychev.expenseanalyzer.domain.entity.BankConnection;
 import com.iraychev.expenseanalyzer.domain.entity.Transaction;
-import com.iraychev.expenseanalyzer.dto.BankAccountDto;
+import com.iraychev.expenseanalyzer.dto.BankConnectionDto;
 import com.iraychev.expenseanalyzer.dto.RequisitionDto;
 import com.iraychev.expenseanalyzer.dto.RequisitionRequestDto;
 import com.iraychev.expenseanalyzer.dto.TransactionDto;
 import com.iraychev.expenseanalyzer.exception.ResourceNotFoundException;
-import com.iraychev.expenseanalyzer.repository.BankAccountRepository;
+import com.iraychev.expenseanalyzer.repository.BankConnectionRepository;
 import lombok.extern.slf4j.Slf4j;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -21,22 +21,22 @@ import java.util.stream.Collectors;
 @Transactional
 @Slf4j
 @RequiredArgsConstructor
-public class BankAccountService {
+public class BankConnectionService {
 
     private final GoCardlessIntegrationService goCardlessIntegrationService;
-    private final BankAccountRepository bankAccountRepository;
+    private final BankConnectionRepository bankConnectionRepository;
     private final TransactionService transactionService;
 
     public RequisitionDto createRequisition(RequisitionRequestDto requestDto) {
         return goCardlessIntegrationService.createRequisition(requestDto);
     }
 
-    public List<BankAccountDto> listAccounts(String requisitionId) {
+    public List<BankConnectionDto> listAccounts(String requisitionId) {
         RequisitionDto requisition = goCardlessIntegrationService.getRequisition(requisitionId);
-        List<BankAccountDto> dtos = new ArrayList<>();
+        List<BankConnectionDto> dtos = new ArrayList<>();
         if (requisition.getAccounts() != null) {
             for (String accountId : requisition.getAccounts()) {
-                dtos.add(BankAccountDto.builder()
+                dtos.add(BankConnectionDto.builder()
                         .externalAccountId(accountId)
                         .accountName("Account " + accountId)
                         .institutionId("MappedInstitutionId")
@@ -47,11 +47,11 @@ public class BankAccountService {
         return dtos;
     }
 
-    public List<TransactionDto> syncTransactions(Long bankAccountId, String accessTokenHeader) {
-        BankAccount bankAccount = bankAccountRepository.findById(bankAccountId)
+    public List<TransactionDto> syncTransactions(Long BankConnectionId, String accessTokenHeader) {
+        BankConnection BankConnection = bankConnectionRepository.findById(BankConnectionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Bank account not found"));
         List<Transaction> transactions = goCardlessIntegrationService.fetchTransactions(
-                bankAccount.getAccountId(), accessTokenHeader);
+                BankConnection.getAccountId(), accessTokenHeader);
         List<Transaction> savedTransactions = transactionService.saveTransactions(transactions);
         return savedTransactions.stream().map(txn ->
                 TransactionDto.builder()

@@ -1,12 +1,12 @@
 package com.iraychev.expenseanalyzer.service;
 
-import com.iraychev.expenseanalyzer.domain.entity.BankAccount;
-import com.iraychev.expenseanalyzer.dto.BankAccountDto;
+import com.iraychev.expenseanalyzer.domain.entity.BankConnection;
+import com.iraychev.expenseanalyzer.dto.BankConnectionDto;
 import com.iraychev.expenseanalyzer.dto.UserDto;
 import com.iraychev.expenseanalyzer.domain.entity.User;
 import com.iraychev.expenseanalyzer.exception.ResourceNotFoundException;
 import com.iraychev.expenseanalyzer.mapper.UserMapper;
-import com.iraychev.expenseanalyzer.repository.BankAccountRepository;
+import com.iraychev.expenseanalyzer.repository.BankConnectionRepository;
 import com.iraychev.expenseanalyzer.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -23,7 +23,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class UserService {
     private final UserRepository userRepository;
-    private final BankAccountRepository bankAccountRepository;
+    private final BankConnectionRepository BankConnectionRepository;
     private final GoCardlessIntegrationService goCardlessIntegrationService;
     private final TransactionService transactionService;
     private final UserMapper userMapper;
@@ -44,22 +44,22 @@ public class UserService {
         return userRepository.save(user);
     }
 
-    public User linkBankAccount(Long userId, BankAccountDto bankAccountDto) {
+    public User linkBankConnection(Long userId, BankConnectionDto bankConnectionDto) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
-        boolean exists = user.getBankAccounts().stream()
-                .anyMatch(account -> account.getAccountId().equals(bankAccountDto.getExternalAccountId()));
+        boolean exists = user.getBankConnections().stream()
+                .anyMatch(account -> account.getAccountId().equals(bankConnectionDto.getExternalAccountId()));
         if (exists) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Bank account already connected");
         }
-        BankAccount bankAccount = BankAccount.builder()
-                .accountId(bankAccountDto.getExternalAccountId())
-                .accountName(bankAccountDto.getAccountName())
-                .institutionId(bankAccountDto.getInstitutionId())
-                .institutionName(bankAccountDto.getInstitutionName())
+        BankConnection bankConnection = BankConnection.builder()
+                .accountId(bankConnectionDto.getExternalAccountId())
+                .accountName(bankConnectionDto.getAccountName())
+                .institutionId(bankConnectionDto.getInstitutionId())
+                .institutionName(bankConnectionDto.getInstitutionName())
                 .user(user)
                 .build();
-        user.getBankAccounts().add(bankAccount);
+        user.getBankConnections().add(bankConnection);
         return userRepository.save(user);
     }
 }

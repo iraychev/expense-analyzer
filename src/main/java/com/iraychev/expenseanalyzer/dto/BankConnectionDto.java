@@ -4,6 +4,8 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import java.util.ArrayList;
+import java.util.List;
 
 import java.time.LocalDateTime;
 
@@ -11,10 +13,13 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class BankAccountDto {
-    private Long id;
-    private String externalAccountId;
-    private String accountName;
+public class BankConnectionDto {
+    private String reference;
     private String institutionId;
     private String institutionName;
+    private String requisitionId;
+    private List<BankAccountDTO> accounts = new ArrayList<>();
+    private User user;
+    private List<TransactionDTO> transactions = new ArrayList<>();
+
 }

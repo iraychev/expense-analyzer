@@ -1,6 +1,6 @@
 package com.iraychev.expenseanalyzer.controller;
 
-import com.iraychev.expenseanalyzer.dto.BankAccountDto;
+import com.iraychev.expenseanalyzer.dto.BankConnectionDto;
 import com.iraychev.expenseanalyzer.dto.UserDto;
 import com.iraychev.expenseanalyzer.domain.entity.User;
 import com.iraychev.expenseanalyzer.service.UserService;
@@ -31,9 +31,9 @@ public class UserController {
     }
 
     @PostMapping("/{userId}/bank-accounts/link")
-    public ResponseEntity<User> linkBankAccount(@PathVariable Long userId,
-                                                @RequestBody BankAccountDto bankAccountDto) {
-        User updatedUser = userService.linkBankAccount(userId, bankAccountDto);
+    public ResponseEntity<User> linkBankConnection(@PathVariable Long userId,
+                                                @RequestBody BankConnectionDto bankConnectionDto) {
+        User updatedUser = userService.linkBankConnection(userId, bankConnectionDto);
         return ResponseEntity.ok(updatedUser);
     }
 }
