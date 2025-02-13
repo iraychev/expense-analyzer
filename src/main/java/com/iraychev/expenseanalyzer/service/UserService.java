@@ -6,6 +6,7 @@ import com.iraychev.expenseanalyzer.dto.UserDto;
 import com.iraychev.expenseanalyzer.domain.entity.User;
 import com.iraychev.expenseanalyzer.exception.ResourceNotFoundException;
 import com.iraychev.expenseanalyzer.mapper.UserMapper;
+import com.iraychev.expenseanalyzer.mapper.BankConnectionMapper;
 import com.iraychev.expenseanalyzer.repository.BankConnectionRepository;
 import com.iraychev.expenseanalyzer.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -27,39 +28,33 @@ public class UserService {
     private final GoCardlessIntegrationService goCardlessIntegrationService;
     private final TransactionService transactionService;
     private final UserMapper userMapper;
+    private final BankConnectionMapper connectionMapper;
 
     public List<UserDto> getAllUsers() {
         List<User> users = userRepository.findAll();
         return users.stream().map(userMapper::toDTO).toList();
     }
 
-    public User createUser(UserDto userDto) {
+    public UserDto createUser(UserDto userDto) {
         if (userRepository.findByEmail(userDto.getEmail()).isPresent()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "User with this email already exists");
         }
-        User user = User.builder()
-                .email(userDto.getEmail())
-                .name(userDto.getName())
-                .build();
-        return userRepository.save(user);
+        User savedUser = userRepository.save(userMapper.toEntity(userDto));
+        return userMapper.toDTO(savedUser);
     }
 
-    public User linkBankConnection(Long userId, BankConnectionDto bankConnectionDto) {
+    public UserDto linkBankConnection(Long userId, BankConnectionDto bankConnectionDto) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
         boolean exists = user.getBankConnections().stream()
-                .anyMatch(account -> account.getAccountId().equals(bankConnectionDto.getExternalAccountId()));
+                .anyMatch(connection connection.getAccountId().equals(bankConnectionDto.getAccountId()));
         if (exists) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Bank account already connected");
         }
-        BankConnection bankConnection = BankConnection.builder()
-                .accountId(bankConnectionDto.getExternalAccountId())
-                .accountName(bankConnectionDto.getAccountName())
-                .institutionId(bankConnectionDto.getInstitutionId())
-                .institutionName(bankConnectionDto.getInstitutionName())
-                .user(user)
-                .build();
-        user.getBankConnections().add(bankConnection);
-        return userRepository.save(user);
+
+        user.getBankConnections().add(connectionMapper.toEntity(bankConnectionDto);
+        User savedUser = userRepository.save(user);
+
+        return userMapper.toDTO(savedUser);
     }
 }

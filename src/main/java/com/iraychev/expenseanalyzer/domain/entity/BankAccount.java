@@ -23,6 +23,8 @@ public class BankAccount {
     private Long id;
 
     private String iban;
+    @Column(name= "account_id")
+    private String accountId;
 
     private List<Transaction> transactions = new ArrayList<>();
 

@@ -15,5 +15,9 @@ import java.time.LocalDateTime;
 @Builder
 public class BankAccountDto {
     private String iban;
+
+    @JsonProperty("account_id")
+    private String accountId;
+    
     private List<TransactionDto> transactions;
 }
