@@ -17,6 +17,7 @@ public class RequisitionRequestDto {
     private String redirect;
     private String institutionId;
     private String reference;
+    
     @Nullable
     private String agreement;
     private String userLanguage;

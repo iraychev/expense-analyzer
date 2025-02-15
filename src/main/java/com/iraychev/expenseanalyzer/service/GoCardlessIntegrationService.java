@@ -22,6 +22,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -69,35 +70,36 @@ public class GoCardlessIntegrationService {
                 .block();
     }
 
-    public List<TransactionDto> fetchTransactions(List<BankAccountDto> accounts) {
-//        ObjectMapper objectMapper = new ObjectMapper();
-//        Resource resource = new ClassPathResource("cached_transactions.json");
-//
-//        // Try to load cached transactions from the classpath
-//        if (resource.exists()) {
-//            try (InputStream in = resource.getInputStream()) {
-//                JsonNode rootNode = objectMapper.readTree(in);
-//                JsonNode bookedTransactions = rootNode
-//                        .path("transactions")
-//                        .path("booked");
-//
-//                List<TransactionDto> transactions = new ArrayList<>();
-//                for (JsonNode txNode : bookedTransactions) {
-//                    TransactionDto dto = TransactionDto.builder()
-//                            .amount(new BigDecimal(txNode.path("transactionAmount").path("amount").asText()))
-//                            .currency(txNode.path("transactionAmount").path("currency").asText())
-//                            .valueDate(LocalDate.parse(txNode.path("valueDate").asText()))
-//                            .transactionDate(LocalDate.parse(txNode.path("bookingDate").asText()))
-//                            .description(txNode.path("remittanceInformationUnstructured").asText())
-//                            .bankAccount(accounts.getFirst())
-//                            .build();
-//                    transactions.add(dto);
-//                }
-//                return transactions;
-//            } catch (IOException e) {
-//                log.error("Failed to read cached transactions", e);
-//            }
-//        }
+    public List<BankAccountDto> fetchTransactions(List<BankAccountDto> accounts) {
+        ObjectMapper objectMapper = new ObjectMapper();
+        Resource resource = new ClassPathResource("cached_transactions.json");
+
+        // Try to load cached transactions from the classpath
+        if (resource.exists()) {
+            try (InputStream in = resource.getInputStream()) {
+                JsonNode rootNode = objectMapper.readTree(in);
+                JsonNode bookedTransactions = rootNode
+                        .path("transactions")
+                        .path("booked");
+
+                List<TransactionDto> transactions = new ArrayList<>();
+                for (JsonNode txNode : bookedTransactions) {
+                    TransactionDto dto = TransactionDto.builder()
+                            .amount(new BigDecimal(txNode.path("transactionAmount").path("amount").asText()))
+                            .currency(txNode.path("transactionAmount").path("currency").asText())
+                            .valueDate(LocalDate.parse(txNode.path("valueDate").asText()))
+                            .transactionDate(LocalDate.parse(txNode.path("bookingDate").asText()))
+                            .description(txNode.path("remittanceInformationUnstructured").asText())
+                            .bankAccount(accounts.getFirst())
+                            .build();
+                    transactions.add(dto);
+                }
+                accounts.getFirst().setTransactions(transactions);
+                return accounts;
+            } catch (IOException e) {
+                log.error("Failed to read cached transactions", e);
+            }
+        }
 
         List<TransactionDto> allTransactions = new ArrayList<>();
         accounts.forEach(account -> {
@@ -127,8 +129,12 @@ public class GoCardlessIntegrationService {
                             }
                         }
                     });
+            account.setTransactions(allTransactions.stream()
+                    .filter(transactionDto -> transactionDto.getBankAccount().equals(account)) // Filter transactions for this account
+                    .collect(Collectors.toList()) // Collect them into a list
+            );
         });
 
-        return allTransactions;
+        return accounts;
     }
 }

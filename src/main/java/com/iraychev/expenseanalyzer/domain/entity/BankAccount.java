@@ -22,7 +22,7 @@ public class BankAccount {
 
     private String iban;
 
-    @Column(name= "account_id")
+    @Column(name = "account_id")
     private String accountId;
 
     @ManyToOne(fetch = FetchType.LAZY)
