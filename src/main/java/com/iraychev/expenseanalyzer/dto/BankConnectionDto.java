@@ -20,5 +20,4 @@ public class BankConnectionDto {
     private List<BankAccountDto> accounts = new ArrayList<>();
     private User user;
     private List<TransactionDto> transactions = new ArrayList<>();
-
 }

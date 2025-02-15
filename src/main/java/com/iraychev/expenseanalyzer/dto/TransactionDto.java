@@ -17,5 +17,5 @@ public class TransactionDto {
     private LocalDate transactionDate;
     private String description;
     private TransactionType type;
-    private BankConnectionDto bankConnection;
+    private BankAccountDto bankAccount;
 }

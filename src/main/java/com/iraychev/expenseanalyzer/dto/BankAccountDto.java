@@ -16,6 +16,7 @@ public class BankAccountDto {
 
     @JsonProperty("account_id")
     private String accountId;
-    
+
+    private BankConnectionDto bankConnection;
     private List<TransactionDto> transactions;
 }

@@ -29,7 +29,7 @@ public class BankConnection {
     @Column(name = "institution_name")
     private String institutionName;
 
-    @Column(name = "requisition_d", nullable = false)
+    @Column(name = "requisition_id", nullable = false)
     private String requisitionId;
 
     @ManyToOne(fetch = FetchType.LAZY)

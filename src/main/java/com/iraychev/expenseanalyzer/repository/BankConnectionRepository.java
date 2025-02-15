@@ -7,4 +7,5 @@ import java.util.List;
 
 public interface BankConnectionRepository extends JpaRepository<BankConnection, Long> {
     List<BankConnection> findByUser_Id(Long userId);
+    BankConnection findByRequisitionId(String requisitionId);
 }
