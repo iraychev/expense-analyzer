@@ -1,0 +1,63 @@
+{
+  "transactions": {
+    "booked": [
+      {
+        "bookingDate": "2025-01-31",
+        "valueDate": "2025-01-31",
+        "transactionAmount": {
+          "amount": "-1.99",
+          "currency": "BGN"
+        },
+        "creditorName": "                                        ",
+        "creditorAccount": {
+          "bban": "0000000000000000"
+        },
+        "remittanceInformationUnstructured": "\u0410\u0412\u0422.\u0422\u0410\u041a\u0421\u0410 \u041e\u0411\u0421\u041b\u0423\u0416\u0412\u0410\u041d\u0415",
+        "internalTransactionId": "adf958469e3de138477be585c933ab3b"
+      },
+      {
+        "bookingDate": "2024-12-31",
+        "valueDate": "2024-12-31",
+        "transactionAmount": {
+          "amount": "-1.99",
+          "currency": "BGN"
+        },
+        "creditorName": "                                        ",
+        "creditorAccount": {
+          "bban": "0000000000000000"
+        },
+        "remittanceInformationUnstructured": "\u0410\u0412\u0422.\u0422\u0410\u041a\u0421\u0410 \u041e\u0411\u0421\u041b\u0423\u0416\u0412\u0410\u041d\u0415",
+        "internalTransactionId": "0b01049c8da34fb27f6eeff3ae3b8ac4"
+      },
+      {
+        "bookingDate": "2024-12-23",
+        "valueDate": "2024-12-23",
+        "transactionAmount": {
+          "amount": "20",
+          "currency": "BGN"
+        },
+        "debtorName": "\u0418\u0412\u0410\u0419\u041b\u041e \u041c\u0410\u0420\u0422\u0418\u041d\u041e\u0412 \u0420\u0410\u0419\u0427\u0415\u0412                  ",
+        "debtorAccount": {
+          "iban": "BG16UNCR70001598168484            "
+        },
+        "remittanceInformationUnstructured": "prevod",
+        "internalTransactionId": "41d903f3a5feecf62fd6db90cec2f5f5"
+      },
+      {
+        "bookingDate": "2024-11-29",
+        "valueDate": "2024-11-29",
+        "transactionAmount": {
+          "amount": "-1.99",
+          "currency": "BGN"
+        },
+        "creditorName": "                                        ",
+        "creditorAccount": {
+          "bban": "0000000000000000"
+        },
+        "remittanceInformationUnstructured": "\u0410\u0412\u0422.\u0422\u0410\u041a\u0421\u0410 \u041e\u0411\u0421\u041b\u0423\u0416\u0412\u0410\u041d\u0415",
+        "internalTransactionId": "3a7f919dcbf0b77ab777e1b86ce8f870"
+      }
+    ],
+    "pending": []
+  }
+}
