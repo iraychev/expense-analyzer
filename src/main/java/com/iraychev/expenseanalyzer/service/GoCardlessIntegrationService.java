@@ -95,6 +95,11 @@ public class GoCardlessIntegrationService {
                     transactions.add(dto);
                 }
                 accounts.getFirst().setTransactions(transactions);
+                log.info("transactions:");
+                log.info(transactions.toString());
+                log.info("accounts:");
+                log.info(accounts.toString());
+
                 return accounts;
             } catch (IOException e) {
                 log.error("Failed to read cached transactions", e);
