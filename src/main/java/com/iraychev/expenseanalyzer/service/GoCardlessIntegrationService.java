@@ -71,40 +71,8 @@ public class GoCardlessIntegrationService {
     }
 
     public List<BankAccountDto> fetchTransactions(List<BankAccountDto> accounts) {
-        ObjectMapper objectMapper = new ObjectMapper();
-        Resource resource = new ClassPathResource("cached_transactions.json");
-
-        // Try to load cached transactions from the classpath
-        if (resource.exists()) {
-            try (InputStream in = resource.getInputStream()) {
-                JsonNode rootNode = objectMapper.readTree(in);
-                JsonNode bookedTransactions = rootNode
-                        .path("transactions")
-                        .path("booked");
-
-                List<TransactionDto> transactions = new ArrayList<>();
-                for (JsonNode txNode : bookedTransactions) {
-                    TransactionDto dto = TransactionDto.builder()
-                            .amount(new BigDecimal(txNode.path("transactionAmount").path("amount").asText()))
-                            .currency(txNode.path("transactionAmount").path("currency").asText())
-                            .valueDate(LocalDate.parse(txNode.path("valueDate").asText()))
-                            .transactionDate(LocalDate.parse(txNode.path("bookingDate").asText()))
-                            .description(txNode.path("remittanceInformationUnstructured").asText())
-                            .bankAccount(accounts.getFirst())
-                            .build();
-                    transactions.add(dto);
-                }
-                accounts.getFirst().setTransactions(transactions);
-                log.info("transactions:");
-                log.info(transactions.toString());
-                log.info("accounts:");
-                log.info(accounts.toString());
-
-                return accounts;
-            } catch (IOException e) {
-                log.error("Failed to read cached transactions", e);
-            }
-        }
+        
+        return returnCachedTransactions(accounts);
 
         List<TransactionDto> allTransactions = new ArrayList<>();
         accounts.forEach(account -> {
@@ -141,5 +109,45 @@ public class GoCardlessIntegrationService {
         });
 
         return accounts;
+    }
+
+    public List<BankAccountDto> returnCachedTransactions(List<BankAccountsDto> accounts) {
+        ObjectMapper objectMapper = new ObjectMapper();
+        Resource resource = new ClassPathResource("cached_transactions.json");
+
+        // Try to load cached transactions from the classpath
+        if (resource.exists()) {
+            try (InputStream in = resource.getInputStream()) {
+                JsonNode rootNode = objectMapper.readTree(in);
+                JsonNode bookedTransactions = rootNode
+                        .path("transactions")
+                        .path("booked");
+
+                List<TransactionDto> transactions = new ArrayList<>();
+                for (JsonNode txNode : bookedTransactions) {
+                    TransactionDto dto = TransactionDto.builder()
+                            .amount(new BigDecimal(txNode.path("transactionAmount").path("amount").asText()))
+                            .currency(txNode.path("transactionAmount").path("currency").asText())
+                            .valueDate(LocalDate.parse(txNode.path("valueDate").asText()))
+                            .transactionDate(LocalDate.parse(txNode.path("bookingDate").asText()))
+                            .description(txNode.path("remittanceInformationUnstructured").asText())
+                            .bankAccount(accounts.getFirst())
+                            .build();
+                    transactions.add(dto);
+                }
+                accounts.getFirst().setTransactions(transactions);
+                
+                String accountsJson = objectMapper.writeValueAsString(accounts);
+                String transactionsJson = objectMapper.writeValueAsString(transactions);
+
+                log.info("Transactions: {}", transactionsJson);
+                log.info("Accounts: {}", accountsJson);
+
+                return accounts;
+            } catch (IOException e) {
+                log.error("Failed to read cached transactions", e);
+            }
+        }
+        return Collections.emptyList();
     }
 }

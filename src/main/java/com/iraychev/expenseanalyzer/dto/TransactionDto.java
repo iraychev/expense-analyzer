@@ -1,6 +1,7 @@
 package com.iraychev.expenseanalyzer.dto;
 
 import com.iraychev.expenseanalyzer.domain.enums.TransactionType;
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import lombok.*;
 
 import java.math.BigDecimal;
@@ -17,5 +18,7 @@ public class TransactionDto {
     private LocalDate transactionDate;
     private String description;
     private TransactionType type;
+
+    @JsonBackReference
     private BankAccountDto bankAccount;
 }
