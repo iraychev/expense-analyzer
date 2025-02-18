@@ -20,7 +20,7 @@ public class UserController {
 
     @ResponseStatus(OK)
     @GetMapping
-    public List<UserDto> getAll() {
+    public List<UserDto> getAllUsers() {
         log.info("Getting all users");
         List<UserDto> users = userService.getAllUsers();
 
@@ -29,16 +29,29 @@ public class UserController {
     }
 
     @ResponseStatus(OK)
-    @GetMapping("/email/{email}")
-    public UserDto getByEmail(@PathVariable String email) {
-        log.info("Received request to get User with emai: {}", email);
+    @DeleteMapping("/{userEmail}/bank-connections/{bankConnectionId}")
+    public void removeBankConnection(@PathVariable String userEmail, @PathVariable Long bankConnectionId) {
+        log.info("Removing bank connection with id: {} from user with email: {}", bankConnectionId, userEmail);
+        userService.removeBankConnection(userEmail, bankConnectionId);
+    }
 
-        return userService.getByEmail(email);
+    @ResponseStatus(OK)
+    @GetMapping("/email/{email}")
+    public UserDto getUserByEmail(@PathVariable String email) {
+        log.info("Received request to get User with email: {}", email);
+        return userService.getUserByEmail(email);
+    }
+
+    @ResponseStatus(OK)
+    @GetMapping("/email/{email}/with-transactions")
+    public UserDto getUserByEmailWithTransactions(@PathVariable String email) {
+        log.info("Received request to get User with email: {} with transactions", email);
+        return userService.getUserByEmailWithTransactions(email);
     }
 
     @ResponseStatus(CREATED)
     @PostMapping
-    public UserDto create(@RequestBody UserDto userDto) {
+    public UserDto createUser(@RequestBody UserDto userDto) {
         log.info("Received request to create User: {}", userDto);
         return userService.createUser(userDto);
     }
@@ -51,7 +64,7 @@ public class UserController {
         if (userEmail == null || requisitionId == null) {
             throw new IllegalArgumentException("User email and requisition ID must be provided");
         }
-        
+
         log.info("Linking user with email: {} with Bank Connection with requisition id: {}", userEmail, requisitionId);
         return userService.linkBankConnection(userEmail, requisitionId);
     }

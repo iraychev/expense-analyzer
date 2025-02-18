@@ -1,12 +1,11 @@
 package com.iraychev.expenseanalyzer.service;
 
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.iraychev.expenseanalyzer.domain.enums.TransactionType;
 import com.iraychev.expenseanalyzer.dto.*;
-import lombok.extern.slf4j.Slf4j;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
@@ -15,14 +14,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.ZoneOffset;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -35,11 +34,12 @@ public class GoCardlessIntegrationService {
     private String apiBaseUrl;
 
     public RequisitionDto createRequisition(RequisitionRequestDto requestDto) {
-        Map<String, Object> payload = new HashMap<>();
-        payload.put("redirect", requestDto.getRedirect());
-        payload.put("institution_id", requestDto.getInstitutionId());
-        payload.put("reference", requestDto.getReference());
-        payload.put("user_language", requestDto.getUserLanguage());
+        Map<String, Object> payload = Map.of(
+                "redirect", requestDto.getRedirect(),
+                "institution_id", requestDto.getInstitutionId(),
+                "reference", requestDto.getReference(),
+                "user_language", requestDto.getUserLanguage()
+        );
 
         log.info("Request DTO: {}", requestDto);
         log.info("Request body: {}", payload);
@@ -49,7 +49,7 @@ public class GoCardlessIntegrationService {
                 .accept(MediaType.APPLICATION_JSON)
                 .bodyValue(payload)
                 .retrieve()
-                .toEntity(RequisitionDto.class)  // Capture the entire response entity
+                .toEntity(RequisitionDto.class)
                 .doOnNext(entity -> log.info("Response status: {}, body: {}", entity.getStatusCode(), entity.getBody()))
                 .flatMap(responseEntity -> {
                     if (responseEntity.getBody() == null) {
@@ -72,19 +72,17 @@ public class GoCardlessIntegrationService {
     }
 
     public List<BankAccountDto> fetchTransactions(List<BankAccountDto> accounts) {
-
-        if(1 == 1) {
+        if (true) {
             return getCachedTransactions(accounts);
         }
-
 
         List<TransactionDto> allTransactions = new ArrayList<>();
         accounts.forEach(account -> {
             webClient.get()
                     .uri(uriBuilder -> uriBuilder
                             .path("/accounts/" + account.getAccountId() + "/transactions/")
-                            .queryParam("date_from", LocalDateTime.now().minusMonths(3))
-                            .queryParam("date_to", LocalDateTime.now(ZoneOffset.UTC))
+                            .queryParam("date_from", LocalDate.now().minusMonths(3))
+                            .queryParam("date_to", LocalDate.now(ZoneOffset.UTC))
                             .build())
                     .retrieve()
                     .bodyToMono(JsonNode.class)
@@ -107,8 +105,8 @@ public class GoCardlessIntegrationService {
                         }
                     });
             account.setTransactions(allTransactions.stream()
-                    .filter(transactionDto -> transactionDto.getBankAccountId().equals(account.getId())) // Filter transactions for this account
-                    .collect(Collectors.toList()) // Collect them into a list
+                    .filter(transactionDto -> transactionDto.getBankAccountId().equals(account.getId()))
+                    .collect(Collectors.toList())
             );
         });
 
@@ -116,16 +114,12 @@ public class GoCardlessIntegrationService {
     }
 
     public List<BankAccountDto> getCachedTransactions(List<BankAccountDto> accounts) {
-        ObjectMapper objectMapper = new ObjectMapper();
         Resource resource = new ClassPathResource("cached_transactions.json");
 
-        // Try to load cached transactions from the classpath
         if (resource.exists()) {
             try (InputStream in = resource.getInputStream()) {
-                JsonNode rootNode = objectMapper.readTree(in);
-                JsonNode bookedTransactions = rootNode
-                        .path("transactions")
-                        .path("booked");
+                JsonNode rootNode = new ObjectMapper().readTree(in);
+                JsonNode bookedTransactions = rootNode.path("transactions").path("booked");
 
                 List<TransactionDto> transactions = new ArrayList<>();
                 for (JsonNode txNode : bookedTransactions) {
@@ -135,12 +129,12 @@ public class GoCardlessIntegrationService {
                             .valueDate(LocalDate.parse(txNode.path("valueDate").asText()).atStartOfDay())
                             .transactionDate(LocalDate.parse(txNode.path("bookingDate").asText()).atStartOfDay())
                             .description(txNode.path("remittanceInformationUnstructured").asText())
-                            .bankAccountId(accounts.getFirst().getId())
+                            .bankAccountId(accounts.get(0).getId())
                             .build();
                     transactions.add(dto);
                 }
-                accounts.getFirst().setTransactions(transactions);
-                
+                accounts.get(0).setTransactions(transactions);
+
                 return accounts;
             } catch (IOException e) {
                 log.error("Failed to read cached transactions", e);
