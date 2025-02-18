@@ -5,7 +5,7 @@ import com.iraychev.expenseanalyzer.dto.BankAccountDto;
 import com.iraychev.expenseanalyzer.dto.BankConnectionDto;
 import com.iraychev.expenseanalyzer.dto.UserDto;
 import com.iraychev.expenseanalyzer.domain.entity.User;
-import com.iraychev.expenseanalyzer.exception.AlreadyExistingResourceException;
+import com.iraychev.expenseanalyzer.exception.ResourceAlreadyExistsException;
 import com.iraychev.expenseanalyzer.exception.ResourceNotFoundException;
 import com.iraychev.expenseanalyzer.mapper.UserMapper;
 import com.iraychev.expenseanalyzer.repository.UserRepository;
@@ -32,8 +32,7 @@ public class UserService {
 
     public UserDto createUser(UserDto userDto) {
         if (userRepository.findByEmail(userDto.getEmail()).isPresent()) {
-            // TODO: define new exception
-            throw new AlreadyExistingResourceException("User with this email already exists");
+            throw new ResourceAlreadyExistsException("User with this email already exists");
         }
         User savedUser = userRepository.save(userMapper.toEntity(userDto));
         return userMapper.toDTO(savedUser);

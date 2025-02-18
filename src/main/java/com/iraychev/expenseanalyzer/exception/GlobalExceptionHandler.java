@@ -20,6 +20,11 @@ public class GlobalExceptionHandler {
         return handler(e);
     }
 
+    @ExceptionHandler(ResourceAlreadyExistsException.class)
+    public ResponseEntity<ExceptionBody> handleAlreadyExistsException(CustomResponseStatusException e) {
+        return handler(e);
+    }
+    
     private ResponseEntity<ExceptionBody> handler(CustomResponseStatusException ex) {
 
         return new ResponseEntity<>(new ExceptionBody(
