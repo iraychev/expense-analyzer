@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -71,16 +72,19 @@ public class GoCardlessIntegrationService {
     }
 
     public List<BankAccountDto> fetchTransactions(List<BankAccountDto> accounts) {
-        
-        return returnCachedTransactions(accounts);
+
+        if(1 == 1) {
+            return returnCachedTransactions(accounts);
+        }
+
 
         List<TransactionDto> allTransactions = new ArrayList<>();
         accounts.forEach(account -> {
             webClient.get()
                     .uri(uriBuilder -> uriBuilder
                             .path("/accounts/" + account.getAccountId() + "/transactions/")
-                            .queryParam("date_from", LocalDate.now().minusMonths(3))
-                            .queryParam("date_to", LocalDate.now(ZoneOffset.UTC))
+                            .queryParam("date_from", LocalDateTime.now().minusMonths(3))
+                            .queryParam("date_to", LocalDateTime.now(ZoneOffset.UTC))
                             .build())
                     .retrieve()
                     .bodyToMono(JsonNode.class)
@@ -92,18 +96,18 @@ public class GoCardlessIntegrationService {
                                 TransactionDto transactionDto = TransactionDto.builder()
                                         .amount(new BigDecimal(transactionNode.path("transactionAmount").path("amount").asText()))
                                         .currency(transactionNode.path("transactionAmount").path("currency").asText())
-                                        .valueDate(LocalDate.parse(transactionNode.path("valueDate").asText()))
-                                        .transactionDate(LocalDate.parse(transactionNode.path("bookingDate").asText()))
+                                        .valueDate(LocalDate.parse(transactionNode.path("valueDate").asText()).atStartOfDay())
+                                        .transactionDate(LocalDate.parse(transactionNode.path("bookingDate").asText()).atStartOfDay())
                                         .description(transactionNode.path("remittanceInformationUnstructured").asText())
                                         .type(TransactionType.UNKNOWN)
-                                        .bankAccount(account)
+                                        .bankAccountId(account.getId())
                                         .build();
                                 allTransactions.add(transactionDto);
                             }
                         }
                     });
             account.setTransactions(allTransactions.stream()
-                    .filter(transactionDto -> transactionDto.getBankAccount().equals(account)) // Filter transactions for this account
+                    .filter(transactionDto -> transactionDto.getBankAccountId().equals(account.getId())) // Filter transactions for this account
                     .collect(Collectors.toList()) // Collect them into a list
             );
         });
@@ -111,7 +115,7 @@ public class GoCardlessIntegrationService {
         return accounts;
     }
 
-    public List<BankAccountDto> returnCachedTransactions(List<BankAccountsDto> accounts) {
+    public List<BankAccountDto> returnCachedTransactions(List<BankAccountDto> accounts) {
         ObjectMapper objectMapper = new ObjectMapper();
         Resource resource = new ClassPathResource("cached_transactions.json");
 
@@ -128,20 +132,20 @@ public class GoCardlessIntegrationService {
                     TransactionDto dto = TransactionDto.builder()
                             .amount(new BigDecimal(txNode.path("transactionAmount").path("amount").asText()))
                             .currency(txNode.path("transactionAmount").path("currency").asText())
-                            .valueDate(LocalDate.parse(txNode.path("valueDate").asText()))
-                            .transactionDate(LocalDate.parse(txNode.path("bookingDate").asText()))
-                            .description(txNode.path("remittanceInformationUnstructured").asText())
-                            .bankAccount(accounts.getFirst())
+                            .valueDate(LocalDate.parse(txNode.path("valueDate").asText()).atStartOfDay())
+                            .transactionDate(LocalDate.parse(txNode.path("bookingDate").asText()).atStartOfDay())
+                            .description(txNode.path("remittanceInformationUnst ructured").asText())
+                            .bankAccountId(accounts.getFirst().getId())
                             .build();
                     transactions.add(dto);
                 }
                 accounts.getFirst().setTransactions(transactions);
                 
-                String accountsJson = objectMapper.writeValueAsString(accounts);
-                String transactionsJson = objectMapper.writeValueAsString(transactions);
-
-                log.info("Transactions: {}", transactionsJson);
-                log.info("Accounts: {}", accountsJson);
+//                String accountsJson = objectMapper.writeValueAsString(accounts);
+//                String transactionsJson = objectMapper.writeValueAsString(transactions);
+//
+//                log.info("Transactions: {}", transactionsJson);
+//                log.info("Accounts: {}", accountsJson);
 
                 return accounts;
             } catch (IOException e) {

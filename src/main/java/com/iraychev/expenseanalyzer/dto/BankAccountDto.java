@@ -14,14 +14,13 @@ import java.util.List;
 @AllArgsConstructor
 @Builder
 public class BankAccountDto {
+    private Long id;
     private String iban;
 
     @JsonProperty("account_id")
     private String accountId;
 
-    @JsonBackReference
-    private BankConnectionDto bankConnection;
+    private Long bankConnectionId;
 
-    @JsonManagedReference
     private List<TransactionDto> transactions;
 }

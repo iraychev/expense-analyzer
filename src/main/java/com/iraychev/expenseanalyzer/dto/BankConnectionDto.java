@@ -15,14 +15,13 @@ import java.util.List;
 @AllArgsConstructor
 @Builder
 public class BankConnectionDto {
+    private Long id;
     private String reference;
     private String institutionId;
     private String institutionName;
     private String requisitionId;
 
-    @JsonManagedReference
     private List<BankAccountDto> accounts = new ArrayList<>();
 
-    @JsonBackReference
-    private User user;
+    private Long userId;
 }
