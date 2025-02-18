@@ -43,10 +43,21 @@ public class UserService {
         BankConnectionDto updatedBankConnection = bankConnectionService.syncTransactions(userEmail, requisitionId);
         User foundUser = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found."));
-        BankConnection correctConnection = foundUser.getBankConnections().stream().filter(bankConnection -> bankConnection.getReference().equals(updatedBankConnection.getReference())).toList().getFirst();
+
+        BankConnection bankConnection = bankConnectionRepository.findById(updatedBankConnection.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("BankConnection not found"));
+
+        List<BankConnection> userBankConnections = foundUser.getBankConnections();
+        if (!userBankConnections.contains(bankConnection)) {
+            userBankConnections.add(bankConnection);
+        }
+
+        foundUser.setBankConnections(userBankConnections);
+        userRepository.save(foundUser);
 
         return userMapper.toDTO(foundUser);
-    }
+    }   
+
 
     public UserDto getByEmail(String userEmail) {
         User foundUser = userRepository.findByEmail(userEmail).orElseThrow(() -> new ResourceNotFoundException("User not found."));
