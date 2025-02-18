@@ -7,7 +7,6 @@ import com.iraychev.expenseanalyzer.dto.*;
 import com.iraychev.expenseanalyzer.exception.ResourceNotFoundException;
 import com.iraychev.expenseanalyzer.mapper.BankAccountMapper;
 import com.iraychev.expenseanalyzer.mapper.BankConnectionMapper;
-import com.iraychev.expenseanalyzer.mapper.UserMapper;
 import com.iraychev.expenseanalyzer.repository.BankAccountRepository;
 import com.iraychev.expenseanalyzer.repository.BankConnectionRepository;
 import com.iraychev.expenseanalyzer.repository.UserRepository;
@@ -25,9 +24,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class BankConnectionService {
     private final GoCardlessIntegrationService goCardlessIntegrationService;
-    private final TransactionService transactionService;
     private final UserRepository userRepository;
-    private final UserMapper userMapper;
     private final BankAccountRepository bankAccountRepository;
     private final BankAccountMapper bankAccountMapper;
     private final BankConnectionRepository bankConnectionRepository;
@@ -49,19 +46,17 @@ public class BankConnectionService {
         User user = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
-        // Create and save BankConnection first
         BankConnection bankConnection = BankConnection.builder()
                 .requisitionId(requisition.getId())
                 .reference(requisition.getReference())
                 .institutionId(requisition.getInstitutionId())
                 .institutionName("nz oshte")
                 .user(user)
-                .accounts(new ArrayList<>())  // Empty list initially
+                .accounts(new ArrayList<>())  
                 .build();
 
-        bankConnection = bankConnectionRepository.save(bankConnection);  // Save it first
+        bankConnection = bankConnectionRepository.save(bankConnection); 
 
-        // Now create accounts that reference this saved BankConnection
         List<BankAccount> bankAccounts = new ArrayList<>();
         if (requisition.getAccounts() != null) {
             for (String accountId : requisition.getAccounts()) {
@@ -69,20 +64,17 @@ public class BankConnectionService {
                         .accountId(accountId)
                         .iban("Not yet known")
                         .transactions(new ArrayList<>())
-                        .bankConnection(bankConnection)  // Reference the saved connection
+                        .bankConnection(bankConnection) 
                         .build();
                 bankAccounts.add(account);
             }
         }
 
-        // Save all accounts
         bankAccounts = bankAccountRepository.saveAll(bankAccounts);
 
-        // Update the connection's accounts list
         bankConnection.setAccounts(bankAccounts);
         bankConnection = bankConnectionRepository.save(bankConnection);
 
-        // Convert to DTOs and continue with transactions
         List<BankAccountDto> accountDtos = bankAccounts.stream()
                 .map(bankAccountMapper::toDTO)
                 .toList();

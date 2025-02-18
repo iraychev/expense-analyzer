@@ -74,7 +74,7 @@ public class GoCardlessIntegrationService {
     public List<BankAccountDto> fetchTransactions(List<BankAccountDto> accounts) {
 
         if(1 == 1) {
-            return returnCachedTransactions(accounts);
+            return getCachedTransactions(accounts);
         }
 
 
@@ -115,7 +115,7 @@ public class GoCardlessIntegrationService {
         return accounts;
     }
 
-    public List<BankAccountDto> returnCachedTransactions(List<BankAccountDto> accounts) {
+    public List<BankAccountDto> getCachedTransactions(List<BankAccountDto> accounts) {
         ObjectMapper objectMapper = new ObjectMapper();
         Resource resource = new ClassPathResource("cached_transactions.json");
 
@@ -140,18 +140,13 @@ public class GoCardlessIntegrationService {
                     transactions.add(dto);
                 }
                 accounts.getFirst().setTransactions(transactions);
-
-//                String accountsJson = objectMapper.writeValueAsString(accounts);
-//                String transactionsJson = objectMapper.writeValueAsString(transactions);
-//
-//                log.info("Transactions: {}", transactionsJson);
-//                log.info("Accounts: {}", accountsJson);
-
+                
                 return accounts;
             } catch (IOException e) {
                 log.error("Failed to read cached transactions", e);
             }
         }
-        return Collections.emptyList();
+        log.error("Couldn't read anything cached");
+        return accounts;
     }
 }
