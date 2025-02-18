@@ -48,6 +48,10 @@ public class UserController {
     public UserDto linkBankConnection(@PathVariable String userEmail,
                                       @RequestParam String requisitionId) {
 
+        if (userEmail == null || requisitionId == null) {
+            throw new IllegalArgumentException("User email and requisition ID must be provided");
+        }
+        
         log.info("Linking user with email: {} with Bank Connection with requisition id: {}", userEmail, requisitionId);
         return userService.linkBankConnection(userEmail, requisitionId);
     }
