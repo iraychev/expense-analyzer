@@ -1,5 +1,8 @@
 package com.iraychev.expenseanalyzer.service;
 
+import com.iraychev.expenseanalyzer.domain.entity.BankConnection;
+import com.iraychev.expenseanalyzer.dto.BankAccountDto;
+import com.iraychev.expenseanalyzer.dto.BankConnectionDto;
 import com.iraychev.expenseanalyzer.dto.UserDto;
 import com.iraychev.expenseanalyzer.domain.entity.User;
 import com.iraychev.expenseanalyzer.exception.AlreadyExistingResourceException;
@@ -37,10 +40,12 @@ public class UserService {
     }
 
     public UserDto linkBankConnection(String userEmail, String requisitionId) {
-        bankConnectionService.syncTransactions(userEmail, requisitionId);
-        User updatedUser = userRepository.findByEmail(userEmail)
+        BankConnectionDto updatedBankConnection = bankConnectionService.syncTransactions(userEmail, requisitionId);
+        User foundUser = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found."));
-        return userMapper.toDTO(updatedUser);
+        BankConnection correctConnection = foundUser.getBankConnections().stream().filter(bankConnection -> bankConnection.getReference().equals(updatedBankConnection.getReference())).toList().getFirst();
+
+        return userMapper.toDTO(foundUser);
     }
 
     public UserDto getByEmail(String userEmail) {

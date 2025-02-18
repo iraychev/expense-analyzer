@@ -134,13 +134,13 @@ public class GoCardlessIntegrationService {
                             .currency(txNode.path("transactionAmount").path("currency").asText())
                             .valueDate(LocalDate.parse(txNode.path("valueDate").asText()).atStartOfDay())
                             .transactionDate(LocalDate.parse(txNode.path("bookingDate").asText()).atStartOfDay())
-                            .description(txNode.path("remittanceInformationUnst ructured").asText())
+                            .description(txNode.path("remittanceInformationUnstructured").asText())
                             .bankAccountId(accounts.getFirst().getId())
                             .build();
                     transactions.add(dto);
                 }
                 accounts.getFirst().setTransactions(transactions);
-                
+
 //                String accountsJson = objectMapper.writeValueAsString(accounts);
 //                String transactionsJson = objectMapper.writeValueAsString(transactions);
 //

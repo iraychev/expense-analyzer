@@ -44,7 +44,7 @@ public class BankConnectionService {
                 .toList();
     }
 
-    public List<BankAccountDto> syncTransactions(String userEmail, String requisitionId) {
+    public BankConnectionDto syncTransactions(String userEmail, String requisitionId) {
         RequisitionDto requisition = goCardlessIntegrationService.getRequisition(requisitionId);
         User user = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
@@ -86,7 +86,9 @@ public class BankConnectionService {
         List<BankAccountDto> accountDtos = bankAccounts.stream()
                 .map(bankAccountMapper::toDTO)
                 .toList();
-
-        return goCardlessIntegrationService.fetchTransactions(accountDtos);
+        List<BankAccountDto> updatedAccounts = goCardlessIntegrationService.fetchTransactions(accountDtos);
+        bankConnection.setAccounts(updatedAccounts.stream().map(bankAccountMapper::toEntity).toList());
+        bankConnectionRepository.save(bankConnection);
+        return bankConnectionMapper.toDTO(bankConnection);
     }
 }
