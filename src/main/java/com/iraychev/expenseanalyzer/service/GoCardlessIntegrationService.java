@@ -23,6 +23,8 @@ import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Service
@@ -73,9 +75,15 @@ public class GoCardlessIntegrationService {
     }
 
     private String decodeUnicode(String input) {
-        return input.replaceAll("\\\\u([0-9a-fA-F]{4})", m -> 
-            String.valueOf((char) Integer.parseInt(m.group(1), 16))
-        );
+        Pattern pattern = Pattern.compile("\\\\u([0-9a-fA-F]{4})");
+        Matcher matcher = pattern.matcher(input);
+        StringBuilder result = new StringBuilder();
+        while (matcher.find()) {
+            String unicodeChar = String.valueOf((char) Integer.parseInt(matcher.group(1), 16));
+            matcher.appendReplacement(result, unicodeChar);
+        }
+        matcher.appendTail(result);
+        return result.toString();
     }
 
     private List<TransactionDto> parseTransactions(List<BankAccountDto> accounts, JsonNode transactionsNode) {
