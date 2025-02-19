@@ -72,8 +72,34 @@ public class GoCardlessIntegrationService {
                 .block();
     }
 
+    private String decodeUnicode(String input) {
+        return input.replaceAll("\\\\u([0-9a-fA-F]{4})", m -> 
+            String.valueOf((char) Integer.parseInt(m.group(1), 16))
+        );
+    }
+
+    private List<TransactionDto> parseTransactions(List<BankAccountDto> accounts, JsonNode transactionsNode) {
+        List<TransactionDto> transactions = new ArrayList<>();
+        
+        if (transactionsNode.isArray()) {
+            for (JsonNode transactionNode : transactionsNode) {
+                TransactionDto transactionDto = TransactionDto.builder()
+                        .amount(new BigDecimal(transactionNode.path("transactionAmount").path("amount").asText()))
+                        .currency(transactionNode.path("transactionAmount").path("currency").asText())
+                        .valueDate(LocalDate.parse(transactionNode.path("valueDate").asText()).atStartOfDay())
+                        .transactionDate(LocalDate.parse(transactionNode.path("bookingDate").asText()).atStartOfDay())
+                        .description(decodeUnicode(transactionNode.path("remittanceInformationUnstructured").asText())) // Decoding here
+                        .type(TransactionType.UNKNOWN)
+                        .bankAccountId(accounts.get(0).getId())
+                        .build();
+                transactions.add(transactionDto);
+            }
+        }
+        return transactions;
+    }
+
     public List<BankAccountDto> fetchTransactions(List<BankAccountDto> accounts) {
-        if (true) {
+        if (true) { // For testing purposes, using cached transactions
             return getCachedTransactions(accounts);
         }
 
@@ -90,20 +116,8 @@ public class GoCardlessIntegrationService {
                     .blockOptional()
                     .ifPresent(response -> {
                         JsonNode transactionsNode = response.path("transactions").path("booked");
-                        if (transactionsNode.isArray()) {
-                            for (JsonNode transactionNode : transactionsNode) {
-                                TransactionDto transactionDto = TransactionDto.builder()
-                                        .amount(new BigDecimal(transactionNode.path("transactionAmount").path("amount").asText()))
-                                        .currency(transactionNode.path("transactionAmount").path("currency").asText())
-                                        .valueDate(LocalDate.parse(transactionNode.path("valueDate").asText()).atStartOfDay())
-                                        .transactionDate(LocalDate.parse(transactionNode.path("bookingDate").asText()).atStartOfDay())
-                                        .description(transactionNode.path("remittanceInformationUnstructured").asText())
-                                        .type(TransactionType.UNKNOWN)
-                                        .bankAccountId(account.getId())
-                                        .build();
-                                allTransactions.add(transactionDto);
-                            }
-                        }
+                        List<TransactionDto> parsedTransactions = parseTransactions(accounts, transactionsNode);
+                        allTransactions.addAll(parsedTransactions);
                     });
             account.setTransactions(allTransactions.stream()
                     .filter(transactionDto -> transactionDto.getBankAccountId().equals(account.getId()))
@@ -122,18 +136,7 @@ public class GoCardlessIntegrationService {
                 JsonNode rootNode = new ObjectMapper().readTree(in);
                 JsonNode bookedTransactions = rootNode.path("transactions").path("booked");
 
-                List<TransactionDto> transactions = new ArrayList<>();
-                for (JsonNode txNode : bookedTransactions) {
-                    TransactionDto dto = TransactionDto.builder()
-                            .amount(new BigDecimal(txNode.path("transactionAmount").path("amount").asText()))
-                            .currency(txNode.path("transactionAmount").path("currency").asText())
-                            .valueDate(LocalDate.parse(txNode.path("valueDate").asText()).atStartOfDay())
-                            .transactionDate(LocalDate.parse(txNode.path("bookingDate").asText()).atStartOfDay())
-                            .description(txNode.path("remittanceInformationUnstructured").asText())
-                            .bankAccountId(accounts.get(0).getId())
-                            .build();
-                    transactions.add(dto);
-                }
+                List<TransactionDto> transactions = parseTransactions(accounts, bookedTransactions);
                 accounts.get(0).setTransactions(transactions);
 
                 return accounts;
