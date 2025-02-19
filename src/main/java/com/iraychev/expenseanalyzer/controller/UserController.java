@@ -18,6 +18,13 @@ import static org.springframework.http.HttpStatus.OK;
 public class UserController {
     private final UserService userService;
 
+    @ResponseStatus(CREATED)
+    @PostMapping
+    public UserDto createUser(@RequestBody UserDto userDto) {
+        log.info("Received request to create User: {}", userDto);
+        return userService.createUser(userDto);
+    }
+
     @ResponseStatus(OK)
     @GetMapping
     public List<UserDto> getAllUsers() {
@@ -26,13 +33,6 @@ public class UserController {
 
         log.debug("Users: {}", users);
         return users;
-    }
-
-    @ResponseStatus(OK)
-    @DeleteMapping("/{userEmail}/bank-connections/{bankConnectionId}")
-    public void removeBankConnection(@PathVariable String userEmail, @PathVariable Long bankConnectionId) {
-        log.info("Removing bank connection with id: {} from user with email: {}", bankConnectionId, userEmail);
-        userService.removeBankConnection(userEmail, bankConnectionId);
     }
 
     @ResponseStatus(OK)
@@ -50,22 +50,22 @@ public class UserController {
     }
 
     @ResponseStatus(CREATED)
-    @PostMapping
-    public UserDto createUser(@RequestBody UserDto userDto) {
-        log.info("Received request to create User: {}", userDto);
-        return userService.createUser(userDto);
-    }
+    @PostMapping("/email/{email}/bank-connections/link/{requisitionId}")
+    public UserDto linkBankConnection(@PathVariable String email,
+                                      @PathVariable String requisitionId) {
 
-    @ResponseStatus(OK)
-    @PostMapping("/{userEmail}/link-bank")
-    public UserDto linkBankConnection(@PathVariable String userEmail,
-                                      @RequestParam String requisitionId) {
-
-        if (userEmail == null || requisitionId == null) {
+        if (email == null || requisitionId == null) {
             throw new IllegalArgumentException("User email and requisition ID must be provided");
         }
 
-        log.info("Linking user with email: {} with Bank Connection with requisition id: {}", userEmail, requisitionId);
-        return userService.linkBankConnection(userEmail, requisitionId);
+        log.info("Linking user with email: {} with Bank Connection with requisition id: {}", email, requisitionId);
+        return userService.linkBankConnection(email, requisitionId);
+    }
+
+    @ResponseStatus(OK)
+    @DeleteMapping("/email/{email}/bank-connections/{bankConnectionId}")
+    public void removeBankConnection(@PathVariable String email, @PathVariable Long bankConnectionId) {
+        log.info("Removing bank connection with id: {} from user with email: {}", bankConnectionId, userEmail);
+        userService.removeBankConnection(email, bankConnectionId);
     }
 }

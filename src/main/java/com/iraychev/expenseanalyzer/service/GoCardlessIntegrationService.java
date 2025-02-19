@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.iraychev.expenseanalyzer.domain.enums.TransactionType;
 import com.iraychev.expenseanalyzer.dto.*;
+import com.iraychev.expenseanalyzer.exception.BankIntegrationException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -54,7 +55,7 @@ public class GoCardlessIntegrationService {
                 .flatMap(responseEntity -> {
                     if (responseEntity.getBody() == null) {
                         log.error("Received 201 Created with empty body. Check API expectations.");
-                        return Mono.error(new RuntimeException("Empty body response"));
+                        return Mono.error(new BankIntegrationException("Empty body response"));
                     }
                     return Mono.just(responseEntity.getBody());
                 })
@@ -114,7 +115,7 @@ public class GoCardlessIntegrationService {
     }
 
     public List<BankAccountDto> getCachedTransactions(List<BankAccountDto> accounts) {
-        Resource resource = new ClassPathResource("cached_transactions.json");
+        Resource resource = new ClassPathResource("cached_transactions_unicredit.json");
 
         if (resource.exists()) {
             try (InputStream in = resource.getInputStream()) {

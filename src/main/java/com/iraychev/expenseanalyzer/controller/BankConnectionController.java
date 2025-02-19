@@ -10,22 +10,25 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+import static org.springframework.http.HttpStatus.CREATED;
+import static org.springframework.http.HttpStatus.OK;
+
 @RestController
-@RequestMapping("/api/v1/bank-accounts")
+@RequestMapping("/api/v1/requisitions")
 @Slf4j
 @RequiredArgsConstructor
 public class BankConnectionController {
 
     private final BankConnectionService bankConnectionService;
 
-    @PostMapping("/requisitions")
-    public ResponseEntity<RequisitionDto> createRequisition(@RequestBody RequisitionRequestDto requisitionRequestDto) {
-        RequisitionDto requisition = bankConnectionService.createRequisition(requisitionRequestDto);
-        return ResponseEntity.status(HttpStatus.CREATED).body(requisition);
+    @ResponseStatus(CREATED)
+    @PostMapping
+    public RequisitionDto createRequisition(@RequestBody RequisitionRequestDto requisitionRequestDto) {
+        return bankConnectionService.createRequisition(requisitionRequestDto);
     }
 
-    @ResponseStatus(HttpStatus.OK)
-    @GetMapping("/requisitions/{requisitionId}/accounts")
+    @ResponseStatus(OK)
+    @GetMapping("/{requisitionId}/accounts")
     public List<BankAccountDto> listAccounts(@PathVariable String requisitionId) {
         return bankConnectionService.listAccounts(requisitionId);
     }

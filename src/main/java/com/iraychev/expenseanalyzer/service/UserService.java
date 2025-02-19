@@ -78,20 +78,19 @@ public class UserService {
     public UserDto getUserByEmail(String userEmail) {
         User foundUser = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found."));
-        return userMapper.toDTO(foundUser);
+
+        UserDto userDto = userMapper.toDTO(foundUser);
+        userDto.getBankConnections().forEach(bankConnectionDto -> bankConnectionDto.getAccounts().forEach(bankAccountDto -> {
+            bankAccountDto.setTransactions(null);
+        }))
+
+        return userDto;
     }
 
     public UserDto getUserByEmailWithTransactions(String userEmail) {
         User foundUser = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found."));
-        UserDto userDto = userMapper.toDTO(foundUser);
-        userDto.getBankConnections().forEach(bankConnectionDto -> bankConnectionDto.getAccounts().forEach(bankAccountDto -> {
-            List<TransactionDto> transactions = transactionRepository.findByBankAccountId(bankAccountDto.getId())
-                    .stream()
-                    .map(transactionMapper::toDTO)
-                    .collect(Collectors.toList());
-            bankAccountDto.setTransactions(transactions);
-        }));
-        return userDto;
+
+        return userMapper.toDTO(foundUser);
     }
 }
