@@ -96,7 +96,7 @@ public class GoCardlessIntegrationService {
                         .currency(transactionNode.path("transactionAmount").path("currency").asText())
                         .valueDate(LocalDate.parse(transactionNode.path("valueDate").asText()).atStartOfDay())
                         .transactionDate(LocalDate.parse(transactionNode.path("bookingDate").asText()).atStartOfDay())
-                        .description(decodeUnicode(transactionNode.path("remittanceInformationUnstructured").asText())) // Decoding here
+                        .description(decodeUnicode(transactionNode.path("remittanceInformationUnstructured").asText()))
                         .type(TransactionType.UNKNOWN)
                         .bankAccountId(accounts.get(0).getId())
                         .build();
