@@ -32,6 +32,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class GoCardlessIntegrationService {
     private final WebClient webClient;
+    private final CategoryService categoryService;
 
     @Value("${gocardless.api.base-url}")
     private String apiBaseUrl;
@@ -91,13 +92,17 @@ public class GoCardlessIntegrationService {
         
         if (transactionsNode.isArray()) {
             for (JsonNode transactionNode : transactionsNode) {
+
+                String decodedRemittanceInfo = decodeUnicode(transactionNode.path("remittanceInformationUnstructured").asText());
+
                 TransactionDto transactionDto = TransactionDto.builder()
                         .amount(new BigDecimal(transactionNode.path("transactionAmount").path("amount").asText()))
                         .currency(transactionNode.path("transactionAmount").path("currency").asText())
                         .valueDate(LocalDate.parse(transactionNode.path("valueDate").asText()).atStartOfDay())
                         .transactionDate(LocalDate.parse(transactionNode.path("bookingDate").asText()).atStartOfDay())
-                        .description(decodeUnicode(transactionNode.path("remittanceInformationUnstructured").asText()))
+                        .description(decodedRemittanceInfo)
                         .type(TransactionType.UNKNOWN)
+                        .category(categoryService.categorizeTransaction(decodedRemittanceInfo))
                         .bankAccountId(accounts.get(0).getId())
                         .build();
                 transactions.add(transactionDto);

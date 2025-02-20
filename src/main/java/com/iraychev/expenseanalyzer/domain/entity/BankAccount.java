@@ -11,7 +11,8 @@ import java.util.List;
 
 @Entity
 @Table(name = "bank_accounts")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder

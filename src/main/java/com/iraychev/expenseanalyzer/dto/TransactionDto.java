@@ -18,6 +18,7 @@ public class TransactionDto {
     private String currency;
     private LocalDateTime valueDate;
     private LocalDateTime transactionDate;
+    private String category;
     private String description;
     private TransactionType type;
 

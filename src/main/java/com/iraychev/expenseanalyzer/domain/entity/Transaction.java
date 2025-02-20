@@ -10,7 +10,8 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "transactions")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
@@ -31,6 +32,8 @@ public class Transaction {
     @Column(nullable = false)
     private LocalDateTime transactionDate;
 
+    private String category;
+    
     @Column
     private String description;
 
