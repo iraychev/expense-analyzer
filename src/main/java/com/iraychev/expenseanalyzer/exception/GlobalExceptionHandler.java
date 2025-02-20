@@ -27,7 +27,6 @@ public class GlobalExceptionHandler {
     private ResponseEntity<ExceptionBody> handler(CustomResponseStatusException ex) {
 
         return new ResponseEntity<>(new ExceptionBody(
-                ex.getErrorCode(),
                 ex.getReason(),
                 ex.getMessage()), ex.getStatusCode()
         );
