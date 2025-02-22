@@ -15,10 +15,9 @@ import javax.annotation.Nullable;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class RequisitionRequestDto {
     private String redirect;
+    // Relevant ones include REVOLUT_REVOLT21, UNICREDIT_UNCRBGSF, DSKBANK_STSABGSFXXX, FIBANK_FINVBGSF,
     private String institutionId;
     private String reference;
-    
-    @Nullable
     private String agreement;
     private String userLanguage;
 }

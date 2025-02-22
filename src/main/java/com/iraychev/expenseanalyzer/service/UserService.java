@@ -1,8 +1,8 @@
 package com.iraychev.expenseanalyzer.service;
 
+import com.iraychev.expenseanalyzer.domain.entity.BankAccount;
 import com.iraychev.expenseanalyzer.domain.entity.BankConnection;
 import com.iraychev.expenseanalyzer.dto.BankConnectionDto;
-import com.iraychev.expenseanalyzer.dto.TransactionDto;
 import com.iraychev.expenseanalyzer.dto.UserDto;
 import com.iraychev.expenseanalyzer.domain.entity.User;
 import com.iraychev.expenseanalyzer.exception.ResourceAlreadyExistsException;
@@ -17,8 +17,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -45,8 +45,46 @@ public class UserService {
         return userMapper.toDTO(savedUser);
     }
 
+    public UserDto updateBankConnection(String userEmail) {
+        User foundUser = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found."));
+
+        List<String> requisitionIds = foundUser.getBankConnections().stream()
+                .map(BankConnection::getRequisitionId)
+                .toList();
+
+        List<BankConnection> updatedBankConnections = requisitionIds.stream()
+                .map(requisitionId -> bankConnectionService.updateBankConnection(userEmail, requisitionId, false))
+                .map(bankConnectionDto -> bankConnectionRepository.findById(bankConnectionDto.getId())
+                        .orElseThrow(() -> new ResourceNotFoundException("BankConnection not found")))
+                .toList();
+
+        List<BankConnection> userBankConnections = new ArrayList<>(foundUser.getBankConnections());
+        for (BankConnection updatedBankConnection : updatedBankConnections) {
+            BankConnection existingConnection = userBankConnections.stream()
+                    .filter(conn -> conn.getRequisitionId().equals(updatedBankConnection.getRequisitionId()))
+                    .findFirst()
+                    .orElse(null);
+
+            if (existingConnection != null) {
+                // Merge bank accounts
+                for (BankAccount updatedAccount : updatedBankConnection.getAccounts()) {
+                    if (!existingConnection.getAccounts().contains(updatedAccount)) {
+                        existingConnection.getAccounts().add(updatedAccount);
+                    }
+                }
+            } else {
+                userBankConnections.add(updatedBankConnection);
+            }
+        }
+
+        foundUser.setBankConnections(userBankConnections);
+        userRepository.save(foundUser);
+        return userMapper.toDTO(foundUser);
+    }
+
     public UserDto linkBankConnection(String userEmail, String requisitionId) {
-        BankConnectionDto updatedBankConnection = bankConnectionService.syncTransactions(userEmail, requisitionId);
+        BankConnectionDto updatedBankConnection = bankConnectionService.updateBankConnection(userEmail, requisitionId, true);
         User foundUser = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found."));
 
@@ -82,7 +120,7 @@ public class UserService {
         UserDto userDto = userMapper.toDTO(foundUser);
         userDto.getBankConnections().forEach(bankConnectionDto -> bankConnectionDto.getAccounts().forEach(bankAccountDto -> {
             bankAccountDto.setTransactions(null);
-        }))
+        }));
 
         return userDto;
     }

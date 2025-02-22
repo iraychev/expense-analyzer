@@ -33,6 +33,7 @@ import java.util.stream.Collectors;
 public class GoCardlessIntegrationService {
     private final WebClient webClient;
     private final CategoryService categoryService;
+    private final ObjectMapper objectMapper;
 
     @Value("${gocardless.api.base-url}")
     private String apiBaseUrl;
@@ -75,43 +76,22 @@ public class GoCardlessIntegrationService {
                 .block();
     }
 
-    private String decodeUnicode(String input) {
-        Pattern pattern = Pattern.compile("\\\\u([0-9a-fA-F]{4})");
-        Matcher matcher = pattern.matcher(input);
-        StringBuilder result = new StringBuilder();
-        while (matcher.find()) {
-            String unicodeChar = String.valueOf((char) Integer.parseInt(matcher.group(1), 16));
-            matcher.appendReplacement(result, unicodeChar);
+    private String getBankAccountIban(String accountId) {
+        String responseBody = webClient.get()
+                .uri(apiBaseUrl + "/accounts/" + accountId + "/")
+                .retrieve()
+                .bodyToMono(String.class)
+                .block();
+
+        try {
+            JsonNode root = objectMapper.readTree(responseBody);
+            return root.path("iban").asText(null);
+        } catch (Exception e) {
+            throw new BankIntegrationException("Error parsing JSON response");
         }
-        matcher.appendTail(result);
-        return result.toString();
     }
 
-    private List<TransactionDto> parseTransactions(List<BankAccountDto> accounts, JsonNode transactionsNode) {
-        List<TransactionDto> transactions = new ArrayList<>();
-        
-        if (transactionsNode.isArray()) {
-            for (JsonNode transactionNode : transactionsNode) {
-
-                String decodedRemittanceInfo = decodeUnicode(transactionNode.path("remittanceInformationUnstructured").asText());
-
-                TransactionDto transactionDto = TransactionDto.builder()
-                        .amount(new BigDecimal(transactionNode.path("transactionAmount").path("amount").asText()))
-                        .currency(transactionNode.path("transactionAmount").path("currency").asText())
-                        .valueDate(LocalDate.parse(transactionNode.path("valueDate").asText()).atStartOfDay())
-                        .transactionDate(LocalDate.parse(transactionNode.path("bookingDate").asText()).atStartOfDay())
-                        .description(decodedRemittanceInfo)
-                        .type(TransactionType.UNKNOWN)
-                        .category(categoryService.categorizeTransaction(decodedRemittanceInfo))
-                        .bankAccountId(accounts.get(0).getId())
-                        .build();
-                transactions.add(transactionDto);
-            }
-        }
-        return transactions;
-    }
-
-    public List<BankAccountDto> fetchTransactions(List<BankAccountDto> accounts) {
+    public List<BankAccountDto> updateBankAccountsWithFetchedTransactions(List<BankAccountDto> accounts) {
         if (true) { // For testing purposes, using cached transactions
             return getCachedTransactions(accounts);
         }
@@ -129,7 +109,7 @@ public class GoCardlessIntegrationService {
                     .blockOptional()
                     .ifPresent(response -> {
                         JsonNode transactionsNode = response.path("transactions").path("booked");
-                        List<TransactionDto> parsedTransactions = parseTransactions(accounts, transactionsNode);
+                        List<TransactionDto> parsedTransactions = parseTransactions(account, transactionsNode);
                         allTransactions.addAll(parsedTransactions);
                     });
             account.setTransactions(allTransactions.stream()
@@ -142,22 +122,88 @@ public class GoCardlessIntegrationService {
     }
 
     public List<BankAccountDto> getCachedTransactions(List<BankAccountDto> accounts) {
-        Resource resource = new ClassPathResource("cached_transactions_unicredit.json");
 
-        if (resource.exists()) {
-            try (InputStream in = resource.getInputStream()) {
-                JsonNode rootNode = new ObjectMapper().readTree(in);
-                JsonNode bookedTransactions = rootNode.path("transactions").path("booked");
+        for (BankAccountDto account : accounts) {
+            String accountIban = account.getIban();
+            if (account.getIban() == null || account.getIban().equals("Not yet known")) {
+                log.info("Account iban is {}", account.getIban());
+                accountIban = getBankAccountIban(account.getAccountId());
+                account.setIban(accountIban);
+            }
 
-                List<TransactionDto> transactions = parseTransactions(accounts, bookedTransactions);
-                accounts.get(0).setTransactions(transactions);
+            Resource resource = getResourceFromIban(accountIban);
 
-                return accounts;
-            } catch (IOException e) {
-                log.error("Failed to read cached transactions", e);
+            if (resource.exists()) {
+                try (InputStream in = resource.getInputStream()) {
+                    JsonNode rootNode = new ObjectMapper().readTree(in);
+                    JsonNode bookedTransactions = rootNode.path("transactions").path("booked");
+
+                    List<TransactionDto> transactions = parseTransactions(account, bookedTransactions);
+                    account.setTransactions(transactions);
+
+                } catch (IOException e) {
+                    log.error("Failed to read cached transactions for accounts {}", account, e);
+                }
             }
         }
-        log.error("Couldn't read anything cached");
         return accounts;
     }
+
+    private Resource getResourceFromIban(String iban) {
+        Resource resource;
+
+        switch (iban) {
+            case "LT143250059635469546" -> resource = new ClassPathResource("cached_transactions_revolut.json");
+            case "BG16UNCR70001598168484" -> resource = new ClassPathResource("cached_transactions_unicredit.json");
+            case "BG68STSA93000027489927" -> resource = new ClassPathResource("cached_transactions_dsk.json");
+            default -> {
+                throw new BankIntegrationException("No cached transactions for account with IBAN: " + iban);
+            }
+        }
+        return resource;
+    }
+
+    private String decodeUnicode(String input) {
+        Pattern pattern = Pattern.compile("\\\\u([0-9a-fA-F]{4})");
+        Matcher matcher = pattern.matcher(input);
+        StringBuilder result = new StringBuilder();
+        while (matcher.find()) {
+            String unicodeChar = String.valueOf((char) Integer.parseInt(matcher.group(1), 16));
+            matcher.appendReplacement(result, unicodeChar);
+        }
+        matcher.appendTail(result);
+        return result.toString();
+    }
+
+    private List<TransactionDto> parseTransactions(BankAccountDto account, JsonNode transactionsNode) {
+        List<TransactionDto> transactions = new ArrayList<>();
+
+        if (transactionsNode.isArray()) {
+            for (JsonNode transactionNode : transactionsNode) {
+                String proprietaryBankTransactionCode = transactionNode.path("proprietaryBankTransactionCode").asText();
+
+                TransactionType type = switch (proprietaryBankTransactionCode) {
+                    case "TRANSFER" -> TransactionType.TRANSFER;
+                    case "CARD_PAYMENT", "AC1" -> TransactionType.CARD_PAYMENT;
+                    case "CREDIT" -> TransactionType.INCOME;
+                    default -> TransactionType.UNKNOWN;
+                };
+
+                String decodedRemittanceInfo = decodeUnicode(transactionNode.path("remittanceInformationUnstructured").asText());
+                TransactionDto transactionDto = TransactionDto.builder()
+                        .amount(new BigDecimal(transactionNode.path("transactionAmount").path("amount").asText()))
+                        .currency(transactionNode.path("transactionAmount").path("currency").asText())
+                        .valueDate(LocalDate.parse(transactionNode.path("valueDate").asText()).atStartOfDay())
+                        .transactionDate(LocalDate.parse(transactionNode.path("bookingDate").asText()).atStartOfDay())
+                        .description(decodedRemittanceInfo)
+                        .type(type)
+                        .category(categoryService.categorizeTransaction(decodedRemittanceInfo))
+                        .bankAccountId(account.getId())
+                        .build();
+                transactions.add(transactionDto);
+            }
+        }
+        return transactions;
+    }
+
 }

@@ -1,6 +1,7 @@
 package com.iraychev.expenseanalyzer.domain.entity;
 
-import javax.persistence.*;
+import lombok.*;
+import jakarta.persistence.*;
 
 @Entity
 @Table(name = "vendor_category_mapping")

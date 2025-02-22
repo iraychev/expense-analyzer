@@ -1,5 +1,9 @@
 package com.iraychev.expenseanalyzer.domain.enums;
 
 public enum TransactionType {
-    INCOME, EXPENSE, TRANSFER, UNKNOWN
+    INCOME,
+    EXPENSE,
+    TRANSFER,
+    UNKNOWN,
+    CARD_PAYMENT
 }

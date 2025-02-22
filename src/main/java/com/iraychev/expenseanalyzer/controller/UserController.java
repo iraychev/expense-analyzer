@@ -63,9 +63,16 @@ public class UserController {
     }
 
     @ResponseStatus(OK)
+    @PutMapping("/email/{email}/bank-connections/update")
+    public UserDto updateBankConnection(@PathVariable String email) {
+        log.info("Updating bank connections for user with email: {}", email);
+        return userService.updateBankConnection(email);
+    }
+
+    @ResponseStatus(OK)
     @DeleteMapping("/email/{email}/bank-connections/{bankConnectionId}")
     public void removeBankConnection(@PathVariable String email, @PathVariable Long bankConnectionId) {
-        log.info("Removing bank connection with id: {} from user with email: {}", bankConnectionId, userEmail);
+        log.info("Removing bank connection with id: {} from user with email: {}", bankConnectionId, email);
         userService.removeBankConnection(email, bankConnectionId);
     }
 }

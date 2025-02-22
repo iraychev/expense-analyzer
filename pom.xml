@@ -95,8 +95,8 @@
 			<artifactId>spring-boot-starter-webflux</artifactId>
 			<version>3.4.2</version>
 		</dependency>
-	</dependencies>
 
+	</dependencies>
 	<build>
 		<plugins>
 			<plugin>

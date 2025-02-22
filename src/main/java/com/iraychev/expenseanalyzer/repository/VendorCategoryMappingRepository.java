@@ -1,6 +1,6 @@
 package com.iraychev.expenseanalyzer.repository;
 
-import com.example.expense.model.VendorCategoryMapping;
+import com.iraychev.expenseanalyzer.domain.entity.VendorCategoryMapping;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;

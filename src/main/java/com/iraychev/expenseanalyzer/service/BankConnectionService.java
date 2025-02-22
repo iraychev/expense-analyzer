@@ -45,27 +45,55 @@ public class BankConnectionService {
                 .toList();
     }
 
-    public BankConnectionDto syncTransactions(String userEmail, String requisitionId) {
+    public BankConnectionDto updateBankConnection(String userEmail, String requisitionId, boolean isNewConnection) {
+        // Todo: Consider persisting requisitions in the database instead of fetching them every time
         RequisitionDto requisition = goCardlessIntegrationService.getRequisition(requisitionId);
         User user = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
+        BankConnection bankConnection;
+        List<BankAccount> bankAccounts;
+        if(isNewConnection) {
+            bankConnection = createBankConnection(requisition, user);
+            bankAccounts = createBankAccounts(requisition, bankConnection);
+        }
+        else {
+            bankConnection = bankConnectionRepository.findByRequisitionId(requisitionId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Bank connection not found"));
+            bankAccounts = bankConnection.getAccounts();
+        }
+
+        List<BankAccountDto> updatedAccounts = goCardlessIntegrationService.updateBankAccountsWithFetchedTransactions(bankAccounts.stream()
+                .map(bankAccountMapper::toDTO)
+                .toList());
+
+        updateBankAccountsWithTransactions(bankAccounts, updatedAccounts);
+        bankConnection.setAccounts(bankAccounts);
+        bankConnection = bankConnectionRepository.save(bankConnection);
+
+        return bankConnectionMapper.toDTO(bankConnection);
+    }
+
+    private BankConnection createBankConnection(RequisitionDto requisition, User user) {
         BankConnection bankConnection = BankConnection.builder()
                 .requisitionId(requisition.getId())
                 .reference(requisition.getReference())
                 .institutionId(requisition.getInstitutionId())
+                // Todo: Do I need institutionName?
                 .institutionName("nz oshte")
                 .user(user)
                 .accounts(new ArrayList<>())
                 .build();
+        return bankConnectionRepository.save(bankConnection);
+    }
 
-        bankConnection = bankConnectionRepository.save(bankConnection);
-
+    private List<BankAccount> createBankAccounts(RequisitionDto requisition, BankConnection bankConnection) {
         List<BankAccount> bankAccounts = new ArrayList<>();
         if (requisition.getAccounts() != null) {
             for (String accountId : requisition.getAccounts()) {
                 BankAccount account = BankAccount.builder()
                         .accountId(accountId)
+                        // Todo: Iban can be fetched from the API
                         .iban("Not yet known")
                         .transactions(new ArrayList<>())
                         .bankConnection(bankConnection)
@@ -73,35 +101,21 @@ public class BankConnectionService {
                 bankAccounts.add(account);
             }
         }
+        return bankAccountRepository.saveAll(bankAccounts);
+    }
 
-        bankAccounts = bankAccountRepository.saveAll(bankAccounts);
-
-        bankConnection.setAccounts(bankAccounts);
-        bankConnection = bankConnectionRepository.save(bankConnection);
-
-        List<BankAccountDto> accountDtos = bankAccounts.stream()
-                .map(bankAccountMapper::toDTO)
-                .toList();
-        List<BankAccountDto> updatedAccounts = goCardlessIntegrationService.fetchTransactions(accountDtos);
-        BankConnection finalBankConnection = bankConnection;
-        List<BankAccount> updatedBankAccounts = updatedAccounts.stream()
-                .map(dto -> {
-                    BankAccount account = bankAccountMapper.toEntity(dto);
-                    account.setBankConnection(finalBankConnection);
-                    account.setTransactions(dto.getTransactions().stream()
-                            .map(transactionDto -> {
-                                Transaction transaction = transactionMapper.toEntity(transactionDto);
-                                transaction.setBankAccount(account);
-                                return transaction;
-                            })
-                            .collect(Collectors.toList()));
-                    return account;
-                })
-                .toList();
-        updatedBankAccounts = bankAccountRepository.saveAll(updatedBankAccounts);
-
-        bankConnection.setAccounts(updatedBankAccounts);
-        bankConnection = bankConnectionRepository.save(bankConnection);
-        return bankConnectionMapper.toDTO(bankConnection);
+    private void updateBankAccountsWithTransactions(List<BankAccount> bankAccounts, List<BankAccountDto> updatedAccounts) {
+        for (int i = 0; i < bankAccounts.size(); i++) {
+            BankAccount account = bankAccounts.get(i);
+            BankAccountDto dto = updatedAccounts.get(i);
+            account.setTransactions(dto.getTransactions().stream()
+                    .map(transactionDto -> {
+                        Transaction transaction = transactionMapper.toEntity(transactionDto);
+                        transaction.setBankAccount(account);
+                        return transaction;
+                    })
+                    .collect(Collectors.toList()));
+        }
+        bankAccountRepository.saveAll(bankAccounts);
     }
 }

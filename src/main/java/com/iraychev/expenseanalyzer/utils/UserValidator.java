@@ -1,5 +1,7 @@
 
-packe com.iraychev.expenseanalyzer.utils;
+package com.iraychev.expenseanalyzer.utils;
+
+import java.util.regex.Pattern;
 
 public class UserValidator {
     private static final Pattern PASSWORD_PATTERN = Pattern.compile("^(?=.*[A-Za-z])(?=.*\\d)[A-Za-z\\d]{8,}$");

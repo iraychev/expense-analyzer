@@ -15,7 +15,7 @@
     <appender name="ROLLING_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
         <file>logs/mcm-service.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-            <fileNamePattern>logs/mcm-service-%d{yyyy-MM-dd}.log</fileNamePattern> <!-- Daily rolling log files -->
+            <fileNamePattern>logs/expense-analyzer-%d{yyyy-MM-dd}.log</fileNamePattern> <!-- Daily rolling log files -->
             <maxHistory>30</maxHistory>
         </rollingPolicy>
         <encoder>

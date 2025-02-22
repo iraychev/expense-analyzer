@@ -1,7 +1,7 @@
 package com.iraychev.expenseanalyzer.service;
 
-import com.example.expense.model.VendorCategoryMapping;
-import com.example.expense.repository.VendorCategoryMappingRepository;
+import com.iraychev.expenseanalyzer.domain.entity.VendorCategoryMapping;
+import com.iraychev.expenseanalyzer.repository.VendorCategoryMappingRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
