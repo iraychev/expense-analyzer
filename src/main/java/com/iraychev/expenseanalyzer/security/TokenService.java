@@ -28,7 +28,7 @@
 //        JwtClaimsSet claims = JwtClaimsSet.builder()
 //                .issuer("self")
 //                .issuedAt(now)
-//                .expiresAt(now.plus(1, ChronoUnit.HOURS))
+//                .expiresAt(now.plus(1, ChronoUnit.DAYS))
 //                .subject(authentication.getName())
 //                .claim("scope", scope)
 //                .build();

@@ -143,6 +143,7 @@
 //     * @return the configured BCryptPasswordEncoder
 //     */
 //    @Bean
+//    // This should be called every time a user password is receieved (e.g. creating a user, getting a user by username and password, updating a user)
 //    public BCryptPasswordEncoder bCryptPasswordEncoder() {
 //        return new BCryptPasswordEncoder();
 //    }
