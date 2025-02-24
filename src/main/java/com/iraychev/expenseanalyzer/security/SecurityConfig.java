@@ -35,6 +35,8 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import static org.springframework.security.web.util.matcher.AntPathRequestMatcher.antMatcher;
+
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
@@ -42,7 +44,6 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 public class SecurityConfig {
 
    private final RsaKeyProperties rsaKeys;
-   private final BCryptPasswordEncoder bCryptPasswordEncoder;
 
    @Bean
    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -54,7 +55,7 @@ public class SecurityConfig {
                        )
                )
                .authorizeHttpRequests(auth -> auth
-                       .requestMatchers(HttpMethod.POST, "/api/token").permitAll()
+                       .requestMatchers(HttpMethod.POST, "/api/v1/token").permitAll()
                        .requestMatchers(
                                 antMatcher("/swagger-ui**"),
                                 antMatcher("/swagger-ui/**"),
@@ -126,7 +127,7 @@ public class SecurityConfig {
    public AuthenticationProvider authenticationProvider() {
        DaoAuthenticationProvider authenticationProvider = new DaoAuthenticationProvider();
        authenticationProvider.setUserDetailsService(userDetailsService());
-       authenticationProvider.setPasswordEncoder(bCryptPasswordEncoder);
+       authenticationProvider.setPasswordEncoder(bCryptPasswordEncoder());
        return authenticationProvider;
    }
 

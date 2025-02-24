@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthController {
    private final AuthService authService;
 
-   @PostMapping("/api/token")
+   @PostMapping("/api/v1/token")
    public String token(HttpServletRequest request) {
        try {
            String authHeader = request.getHeader("Authorization");

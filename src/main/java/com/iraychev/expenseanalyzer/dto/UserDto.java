@@ -1,6 +1,5 @@
 package com.iraychev.expenseanalyzer.dto;
 
-import com.fasterxml.jackson.annotation.JsonManagedReference;
 import lombok.*;
 
 import java.util.List;
@@ -11,6 +10,8 @@ import java.util.List;
 @Builder
 public class UserDto {
     private Long id;
+    private String username;
+    private String password;
     private String email;
     private String name;
 

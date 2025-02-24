@@ -62,6 +62,12 @@ public class UserController {
         return userService.linkBankConnection(email, requisitionId);
     }
 
+    @PatchMapping("/email/{email}")
+    public UserDto updateProfile(@PathVariable String email, @RequestBody UserDto userDto) {
+        log.info("Received request to update User profile: {}", userDto);
+        return userService.updateProfile(email, userDto);
+    }
+
     @ResponseStatus(OK)
     @PutMapping("/email/{email}/bank-connections/update")
     public UserDto updateBankConnection(@PathVariable String email) {

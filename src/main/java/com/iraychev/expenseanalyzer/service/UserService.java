@@ -7,13 +7,12 @@ import com.iraychev.expenseanalyzer.dto.UserDto;
 import com.iraychev.expenseanalyzer.domain.entity.User;
 import com.iraychev.expenseanalyzer.exception.ResourceAlreadyExistsException;
 import com.iraychev.expenseanalyzer.exception.ResourceNotFoundException;
-import com.iraychev.expenseanalyzer.mapper.TransactionMapper;
 import com.iraychev.expenseanalyzer.mapper.UserMapper;
 import com.iraychev.expenseanalyzer.repository.BankConnectionRepository;
-import com.iraychev.expenseanalyzer.repository.TransactionRepository;
 import com.iraychev.expenseanalyzer.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,8 +28,7 @@ public class UserService {
     private final UserMapper userMapper;
     private final BankConnectionService bankConnectionService;
     private final BankConnectionRepository bankConnectionRepository;
-    private final TransactionRepository transactionRepository;
-    private final TransactionMapper transactionMapper;
+    private final BCryptPasswordEncoder bCryptPasswordEncoder;
 
     public List<UserDto> getAllUsers() {
         List<User> users = userRepository.findAll();
@@ -41,8 +39,23 @@ public class UserService {
         if (userRepository.findByEmail(userDto.getEmail()).isPresent()) {
             throw new ResourceAlreadyExistsException("User with this email already exists");
         }
+        userDto.setPassword(bCryptPasswordEncoder.encode(userDto.getPassword()));
+
         User savedUser = userRepository.save(userMapper.toEntity(userDto));
         return userMapper.toDTO(savedUser);
+    }
+
+    public UserDto updateProfile(String email, UserDto userDto) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        if (userDto.getPassword() != null) {
+            userDto.setPassword(bCryptPasswordEncoder.encode(userDto.getPassword()));
+        }
+
+        userMapper.updateUserFromDto(userDto, user);
+        userRepository.save(user);
+        return userMapper.toDTO(user);
     }
 
     public UserDto updateBankConnection(String userEmail) {
