@@ -36,49 +36,49 @@ public class UserController {
     }
 
     @ResponseStatus(OK)
-    @GetMapping("/email/{email}")
-    public UserDto getUserByEmail(@PathVariable String email) {
-        log.info("Received request to get User with email: {}", email);
-        return userService.getUserByEmail(email);
+    @GetMapping("/username/{username}")
+    public UserDto getUserByUsername(@PathVariable String username) {
+        log.info("Received request to get User with username: {}", username);
+        return userService.getUserByUsername(username);
     }
 
     @ResponseStatus(OK)
-    @GetMapping("/email/{email}/with-transactions")
-    public UserDto getUserByEmailWithTransactions(@PathVariable String email) {
-        log.info("Received request to get User with email: {} with transactions", email);
-        return userService.getUserByEmailWithTransactions(email);
+    @GetMapping("/username/{username}/with-transactions")
+    public UserDto getUserByUsernameWithTransactions(@PathVariable String username) {
+        log.info("Received request to get User with email: {} with transactions", username);
+        return userService.getUserByUsernameWithTransactions(username);
     }
 
     @ResponseStatus(CREATED)
-    @PostMapping("/email/{email}/bank-connections/link/{requisitionId}")
-    public UserDto linkBankConnection(@PathVariable String email,
+    @PostMapping("/username/{username}/bank-connections/link/{requisitionId}")
+    public UserDto linkBankConnection(@PathVariable String username,
                                       @PathVariable String requisitionId) {
 
-        if (email == null || requisitionId == null) {
+        if (username == null || requisitionId == null) {
             throw new IllegalArgumentException("User email and requisition ID must be provided");
         }
 
-        log.info("Linking user with email: {} with Bank Connection with requisition id: {}", email, requisitionId);
-        return userService.linkBankConnection(email, requisitionId);
+        log.info("Linking user with username: {} with Bank Connection with requisition id: {}", username, requisitionId);
+        return userService.linkBankConnection(username, requisitionId);
     }
 
-    @PatchMapping("/email/{email}")
-    public UserDto updateProfile(@PathVariable String email, @RequestBody UserDto userDto) {
+    @PatchMapping("/username/{username}")
+    public UserDto updateProfile(@PathVariable String username, @RequestBody UserDto userDto) {
         log.info("Received request to update User profile: {}", userDto);
-        return userService.updateProfile(email, userDto);
+        return userService.updateProfile(username, userDto);
     }
 
     @ResponseStatus(OK)
-    @PutMapping("/email/{email}/bank-connections/update")
-    public UserDto updateBankConnection(@PathVariable String email) {
-        log.info("Updating bank connections for user with email: {}", email);
-        return userService.updateBankConnection(email);
+    @PutMapping("/username/{username}/bank-connections/update")
+    public UserDto updateBankConnection(@PathVariable String username) {
+        log.info("Updating bank connections for user with username: {}", username);
+        return userService.updateBankConnection(username);
     }
 
     @ResponseStatus(OK)
-    @DeleteMapping("/email/{email}/bank-connections/{bankConnectionId}")
-    public void removeBankConnection(@PathVariable String email, @PathVariable Long bankConnectionId) {
-        log.info("Removing bank connection with id: {} from user with email: {}", bankConnectionId, email);
-        userService.removeBankConnection(email, bankConnectionId);
+    @DeleteMapping("/username/{username}/bank-connections/{bankConnectionId}")
+    public void removeBankConnection(@PathVariable String username, @PathVariable Long bankConnectionId) {
+        log.info("Removing bank connection with id: {} from user with username: {}", bankConnectionId, username);
+        userService.removeBankConnection(username, bankConnectionId);
     }
 }

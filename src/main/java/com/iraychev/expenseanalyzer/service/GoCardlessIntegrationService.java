@@ -156,9 +156,7 @@ public class GoCardlessIntegrationService {
             case "LT143250059635469546" -> resource = new ClassPathResource("cached_transactions_revolut.json");
             case "BG16UNCR70001598168484" -> resource = new ClassPathResource("cached_transactions_unicredit.json");
             case "BG68STSA93000027489927" -> resource = new ClassPathResource("cached_transactions_dsk.json");
-            default -> {
-                throw new BankIntegrationException("No cached transactions for account with IBAN: " + iban);
-            }
+            default -> throw new BankIntegrationException("No cached transactions for account with IBAN: " + iban);
         }
         return resource;
     }

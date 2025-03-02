@@ -57,7 +57,7 @@ public class SecurityConfig {
                .authorizeHttpRequests(auth -> auth
                        .requestMatchers(HttpMethod.POST, "/api/v1/token").permitAll()
                        .requestMatchers(
-                                antMatcher("/swagger-ui**"),
+                                antMatcher("/swagger-ui.html"),
                                 antMatcher("/swagger-ui/**"),
                                 antMatcher("/v3/api-docs/**")
                         ).permitAll()
@@ -77,6 +77,8 @@ public class SecurityConfig {
        CorsConfiguration config = new CorsConfiguration();
        // default react localhost
        config.addAllowedOrigin("http://localhost:5173");
+       // react native
+       config.addAllowedOrigin("http://localhost:8081");
        config.addAllowedMethod("*");
        config.addAllowedHeader("*");
        config.setAllowCredentials(true);

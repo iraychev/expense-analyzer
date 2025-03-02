@@ -36,8 +36,8 @@ public class UserService {
     }
 
     public UserDto createUser(UserDto userDto) {
-        if (userRepository.findByEmail(userDto.getEmail()).isPresent()) {
-            throw new ResourceAlreadyExistsException("User with this email already exists");
+        if (userRepository.findByUsername(userDto.getUsername()).isPresent()) {
+            throw new ResourceAlreadyExistsException("User with this username already exists");
         }
         userDto.setPassword(bCryptPasswordEncoder.encode(userDto.getPassword()));
 
@@ -45,8 +45,8 @@ public class UserService {
         return userMapper.toDTO(savedUser);
     }
 
-    public UserDto updateProfile(String email, UserDto userDto) {
-        User user = userRepository.findByEmail(email)
+    public UserDto updateProfile(String username, UserDto userDto) {
+        User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         if (userDto.getPassword() != null) {
@@ -58,8 +58,8 @@ public class UserService {
         return userMapper.toDTO(user);
     }
 
-    public UserDto updateBankConnection(String userEmail) {
-        User foundUser = userRepository.findByEmail(userEmail)
+    public UserDto updateBankConnection(String username) {
+        User foundUser = userRepository.findByUsername(username)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found."));
 
         List<String> requisitionIds = foundUser.getBankConnections().stream()
@@ -67,7 +67,7 @@ public class UserService {
                 .toList();
 
         List<BankConnection> updatedBankConnections = requisitionIds.stream()
-                .map(requisitionId -> bankConnectionService.updateBankConnection(userEmail, requisitionId, false))
+                .map(requisitionId -> bankConnectionService.updateBankConnection(username, requisitionId, false))
                 .map(bankConnectionDto -> bankConnectionRepository.findById(bankConnectionDto.getId())
                         .orElseThrow(() -> new ResourceNotFoundException("BankConnection not found")))
                 .toList();
@@ -96,9 +96,9 @@ public class UserService {
         return userMapper.toDTO(foundUser);
     }
 
-    public UserDto linkBankConnection(String userEmail, String requisitionId) {
-        BankConnectionDto updatedBankConnection = bankConnectionService.updateBankConnection(userEmail, requisitionId, true);
-        User foundUser = userRepository.findByEmail(userEmail)
+    public UserDto linkBankConnection(String username, String requisitionId) {
+        BankConnectionDto updatedBankConnection = bankConnectionService.updateBankConnection(username, requisitionId, true);
+        User foundUser = userRepository.findByUsername(username)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found."));
 
         BankConnection bankConnection = bankConnectionRepository.findById(updatedBankConnection.getId())
@@ -115,8 +115,8 @@ public class UserService {
         return userMapper.toDTO(foundUser);
     }
 
-    public void removeBankConnection(String userEmail, Long bankConnectionId) {
-        User user = userRepository.findByEmail(userEmail)
+    public void removeBankConnection(String username, Long bankConnectionId) {
+        User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         BankConnection bankConnection = bankConnectionRepository.findById(bankConnectionId)
@@ -126,8 +126,8 @@ public class UserService {
         userRepository.save(user);
     }
 
-    public UserDto getUserByEmail(String userEmail) {
-        User foundUser = userRepository.findByEmail(userEmail)
+    public UserDto getUserByUsername(String username) {
+        User foundUser = userRepository.findByUsername(username)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found."));
 
         UserDto userDto = userMapper.toDTO(foundUser);
@@ -138,8 +138,8 @@ public class UserService {
         return userDto;
     }
 
-    public UserDto getUserByEmailWithTransactions(String userEmail) {
-        User foundUser = userRepository.findByEmail(userEmail)
+    public UserDto getUserByUsernameWithTransactions(String username) {
+        User foundUser = userRepository.findByUsername(username)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found."));
 
         return userMapper.toDTO(foundUser);

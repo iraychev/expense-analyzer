@@ -45,10 +45,10 @@ public class BankConnectionService {
                 .toList();
     }
 
-    public BankConnectionDto updateBankConnection(String userEmail, String requisitionId, boolean isNewConnection) {
+    public BankConnectionDto updateBankConnection(String username, String requisitionId, boolean isNewConnection) {
         // Todo: Consider persisting requisitions in the database instead of fetching them every time
         RequisitionDto requisition = goCardlessIntegrationService.getRequisition(requisitionId);
-        User user = userRepository.findByEmail(userEmail)
+        User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         BankConnection bankConnection;
