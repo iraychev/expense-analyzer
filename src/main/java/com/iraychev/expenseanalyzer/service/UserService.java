@@ -144,4 +144,11 @@ public class UserService {
 
         return userMapper.toDTO(foundUser);
     }
+
+    public void removeUser(String username) {
+        User foundUser = userRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found."));
+
+        userRepository.delete(foundUser);
+    }
 }

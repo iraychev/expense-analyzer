@@ -8,8 +8,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-import static org.springframework.http.HttpStatus.CREATED;
-import static org.springframework.http.HttpStatus.OK;
+import static org.springframework.http.HttpStatus.*;
 
 @RestController
 @RequestMapping("/api/v1/users")
@@ -80,5 +79,12 @@ public class UserController {
     public void removeBankConnection(@PathVariable String username, @PathVariable Long bankConnectionId) {
         log.info("Removing bank connection with id: {} from user with username: {}", bankConnectionId, username);
         userService.removeBankConnection(username, bankConnectionId);
+    }
+
+    @ResponseStatus(NO_CONTENT)
+    @DeleteMapping("/username/{username}")
+    public void removeUser(@PathVariable String username) {
+        log.info("Removing user with id: {}", username);
+        userService.removeUser(username);
     }
 }
