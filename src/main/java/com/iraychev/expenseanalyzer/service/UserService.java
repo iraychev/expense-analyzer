@@ -32,6 +32,9 @@ public class UserService {
 
     public List<UserDto> getAllUsers() {
         List<User> users = userRepository.findAll();
+        users.forEach(user -> user.getBankConnections()
+                .forEach(bankConnection -> bankConnection.getAccounts()
+                        .forEach(bankAccount -> bankAccount.setTransactions(null))));
         return users.stream().map(userMapper::toDTO).toList();
     }
 
@@ -131,9 +134,8 @@ public class UserService {
                 .orElseThrow(() -> new ResourceNotFoundException("User not found."));
 
         UserDto userDto = userMapper.toDTO(foundUser);
-        userDto.getBankConnections().forEach(bankConnectionDto -> bankConnectionDto.getAccounts().forEach(bankAccountDto -> {
-            bankAccountDto.setTransactions(null);
-        }));
+        userDto.getBankConnections().forEach(bankConnectionDto -> bankConnectionDto.getAccounts()
+                .forEach(bankAccountDto -> bankAccountDto.setTransactions(null)));
 
         return userDto;
     }

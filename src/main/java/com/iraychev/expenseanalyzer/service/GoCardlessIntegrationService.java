@@ -172,7 +172,6 @@ public class GoCardlessIntegrationService {
         matcher.appendTail(result);
         return result.toString();
     }
-
     private List<TransactionDto> parseTransactions(BankAccountDto account, JsonNode transactionsNode) {
         List<TransactionDto> transactions = new ArrayList<>();
 
@@ -187,7 +186,19 @@ public class GoCardlessIntegrationService {
                     default -> TransactionType.UNKNOWN;
                 };
 
-                String decodedRemittanceInfo = decodeUnicode(transactionNode.path("remittanceInformationUnstructured").asText());
+                String remittanceInformationUnstructured = transactionNode.path("remittanceInformationUnstructured").asText();
+                if (remittanceInformationUnstructured.isEmpty()) {
+                    JsonNode remittanceInformationUnstructuredArray = transactionNode.path("remittanceInformationUnstructuredArray");
+                    if (remittanceInformationUnstructuredArray.isArray()) {
+                        StringBuilder combinedRemittanceInfo = new StringBuilder();
+                        for (JsonNode element : remittanceInformationUnstructuredArray) {
+                            combinedRemittanceInfo.append(element.asText()).append(" ");
+                        }
+                        remittanceInformationUnstructured = combinedRemittanceInfo.toString().trim();
+                    }
+                }
+
+                String decodedRemittanceInfo = decodeUnicode(remittanceInformationUnstructured);
                 TransactionDto transactionDto = TransactionDto.builder()
                         .amount(new BigDecimal(transactionNode.path("transactionAmount").path("amount").asText()))
                         .currency(transactionNode.path("transactionAmount").path("currency").asText())
@@ -203,5 +214,4 @@ public class GoCardlessIntegrationService {
         }
         return transactions;
     }
-
 }
