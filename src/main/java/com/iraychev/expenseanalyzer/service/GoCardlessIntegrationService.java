@@ -76,7 +76,7 @@ public class GoCardlessIntegrationService {
                 .block();
     }
 
-    private String getBankAccountIban(String accountId) {
+    public String getBankAccountIban(String accountId) {
         String responseBody = webClient.get()
                 .uri(apiBaseUrl + "/accounts/" + accountId + "/")
                 .retrieve()

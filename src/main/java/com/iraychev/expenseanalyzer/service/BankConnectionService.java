@@ -80,7 +80,7 @@ public class BankConnectionService {
                 .reference(requisition.getReference())
                 .institutionId(requisition.getInstitutionId())
                 // Todo: Do I need institutionName?
-                .institutionName("nz oshte")
+                .institutionName(requisition.getInstitutionId())
                 .user(user)
                 .accounts(new ArrayList<>())
                 .build();
@@ -94,7 +94,7 @@ public class BankConnectionService {
                 BankAccount account = BankAccount.builder()
                         .accountId(accountId)
                         // Todo: Iban can be fetched from the API
-                        .iban("Not yet known")
+                        .iban(goCardlessIntegrationService.getBankAccountIban(accountId))
                         .transactions(new ArrayList<>())
                         .bankConnection(bankConnection)
                         .build();

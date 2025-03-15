@@ -24,8 +24,7 @@ public class CategoryService {
             return categoryOpt.get();
         } else {
             log.info("Vendor {} not found in the database, categorizing...", vendor);
-            String aiCategory;
-                aiCategory = aiCategorizationService.categorizeRemittance(remittanceInfo);
+            String aiCategory = aiCategorizationService.categorizeRemittance(remittanceInfo);
 
             vendorCategoryMappingService.save(VendorCategoryMapping.builder().category(aiCategory).vendor(vendor).build());
             return aiCategory;
