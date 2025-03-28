@@ -1,7 +1,7 @@
 package com.iraychev.expenseanalyzer.mapper;
 
-import com.iraychev.expenseanalyzer.dto.TransactionDto;
 import com.iraychev.expenseanalyzer.domain.entity.Transaction;
+import com.iraychev.expenseanalyzer.dto.TransactionDto;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 

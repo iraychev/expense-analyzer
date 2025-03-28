@@ -1,6 +1,8 @@
 package com.iraychev.expenseanalyzer.controller;
 
-import com.iraychev.expenseanalyzer.dto.*;
+import com.iraychev.expenseanalyzer.dto.BankAccountDto;
+import com.iraychev.expenseanalyzer.dto.RequisitionDto;
+import com.iraychev.expenseanalyzer.dto.RequisitionRequestDto;
 import com.iraychev.expenseanalyzer.service.BankConnectionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
