@@ -32,4 +32,10 @@ public class BankConnectionController {
     public List<BankAccountDto> listAccounts(@PathVariable String requisitionId) {
         return bankConnectionService.listAccounts(requisitionId);
     }
+
+    @ResponseStatus(OK)
+    @DeleteMapping("/{requisitionId}")
+    public void deleteBankConnection(@PathVariable String requisitionId) {
+        bankConnectionService.deleteBankConnection(requisitionId);
+    }
 }

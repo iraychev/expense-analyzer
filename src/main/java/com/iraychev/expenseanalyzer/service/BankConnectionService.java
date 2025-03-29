@@ -77,6 +77,16 @@ public class BankConnectionService {
         return bankConnectionMapper.toDTO(bankConnection);
     }
 
+    public void deleteBankConnection(String requisitionId) {
+        BankConnection bankConnection = bankConnectionRepository.findByRequisitionId(requisitionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Bank connection not found"));
+
+        goCardlessIntegrationService.deleteRequisition(requisitionId);
+
+        bankAccountRepository.deleteAll(bankConnection.getAccounts());
+        bankConnectionRepository.delete(bankConnection);
+    }
+
     private BankConnection createBankConnection(RequisitionDto requisition, User user) {
         BankConnection bankConnection = BankConnection.builder()
                 .requisitionId(requisition.getId())

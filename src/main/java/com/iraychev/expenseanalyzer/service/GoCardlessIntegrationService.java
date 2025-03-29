@@ -79,6 +79,14 @@ public class GoCardlessIntegrationService {
                 .block();
     }
 
+    public void deleteRequisition(String requisitionId) {
+        webClient.delete()
+                .uri(apiBaseUrl + "/requisitions/" + requisitionId + "/")
+                .retrieve()
+                .toBodilessEntity()
+                .block();
+    }
+
     public String getBankAccountIban(String accountId) {
         String responseBody = webClient.get()
                 .uri(apiBaseUrl + "/accounts/" + accountId + "/")
@@ -88,16 +96,18 @@ public class GoCardlessIntegrationService {
 
         try {
             JsonNode root = objectMapper.readTree(responseBody);
-            return root.path("iban").asText(null);
+            String iban = root.path("iban").asText(null);
+            log.info("IBAN: {}", iban);
+            return iban;
         } catch (Exception e) {
             throw new BankIntegrationException("Error parsing JSON response");
         }
     }
 
     public List<BankAccountDto> updateBankAccountsWithFetchedTransactions(List<BankAccountDto> accounts) {
-        if (true) { // For testing purposes, using cached transactions
-            return getCachedTransactions(accounts);
-        }
+    //        if (true) { // For testing purposes, using cached transactions
+    //            return getCachedTransactions(accounts);
+    //        }
 
         List<TransactionDto> allTransactions = new ArrayList<>();
         accounts.forEach(account -> {
