@@ -62,6 +62,7 @@ public class UserService {
     }
 
     public UserDto updateBankConnection(String username) {
+        log.info("Updating bank connections for user with username: {}", username);
         User foundUser = userRepository.findByUsername(username)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found."));
 
@@ -96,6 +97,8 @@ public class UserService {
 
         foundUser.setBankConnections(userBankConnections);
         userRepository.save(foundUser);
+
+        log.info("Successfully updated bank connections for user with username: {}", username);
         return userMapper.toDTO(foundUser);
     }
 
