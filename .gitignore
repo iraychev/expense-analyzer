@@ -32,3 +32,6 @@ build/
 ### VS Code ###
 .vscode/
 /logs/
+/src/main/resources/application-local.yaml
+/src/main/resources/certs/
+*.pem
