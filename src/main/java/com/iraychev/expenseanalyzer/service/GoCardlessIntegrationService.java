@@ -28,7 +28,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -109,27 +108,20 @@ public class GoCardlessIntegrationService {
     //            return getCachedTransactions(accounts);
     //        }
 
-        List<TransactionDto> allTransactions = new ArrayList<>();
-        accounts.forEach(account -> {
-            webClient.get()
-                    .uri(uriBuilder -> uriBuilder
-                            .path("/accounts/" + account.getAccountId() + "/transactions/")
-                            .queryParam("date_from", LocalDate.now().minusMonths(3))
-                            .queryParam("date_to", LocalDate.now(ZoneOffset.UTC))
-                            .build())
-                    .retrieve()
-                    .bodyToMono(JsonNode.class)
-                    .blockOptional()
-                    .ifPresent(response -> {
-                        JsonNode transactionsNode = response.path("transactions").path("booked");
-                        List<TransactionDto> parsedTransactions = parseTransactions(account, transactionsNode);
-                        allTransactions.addAll(parsedTransactions);
-                    });
-            account.setTransactions(allTransactions.stream()
-                    .filter(transactionDto -> transactionDto.getBankAccountId().equals(account.getId()))
-                    .collect(Collectors.toList())
-            );
-        });
+        accounts.forEach(account -> webClient.get()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/accounts/" + account.getAccountId() + "/transactions/")
+                        .queryParam("date_from", LocalDate.now().minusMonths(3))
+                        .queryParam("date_to", LocalDate.now(ZoneOffset.UTC))
+                        .build())
+                .retrieve()
+                .bodyToMono(JsonNode.class)
+                .blockOptional()
+                .ifPresent(response -> {
+                    JsonNode transactionsNode = response.path("transactions").path("booked");
+                    List<TransactionDto> accountTransactions = parseTransactions(account, transactionsNode);
+                    account.setTransactions(accountTransactions);
+                }));
 
         return accounts;
     }
