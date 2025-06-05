@@ -22,6 +22,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -121,13 +123,27 @@ public class BankConnectionService {
         for (int i = 0; i < bankAccounts.size(); i++) {
             BankAccount account = bankAccounts.get(i);
             BankAccountDto dto = updatedAccounts.get(i);
-            account.setTransactions(dto.getTransactions().stream()
+
+            Set<String> existingDescriptions = account.getTransactions().stream()
+                    .map(Transaction::getDescription)
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toSet());
+
+            // Filter out transactions that already exist (based on description)
+            List<Transaction> newTransactions = dto.getTransactions().stream()
+                    .filter(transactionDto -> transactionDto.getDescription() != null
+                            && !existingDescriptions.contains(transactionDto.getDescription()))
                     .map(transactionDto -> {
                         Transaction transaction = transactionMapper.toEntity(transactionDto);
                         transaction.setBankAccount(account);
                         return transaction;
                     })
-                    .collect(Collectors.toList()));
+                    .toList();
+
+            account.getTransactions().addAll(newTransactions);
+
+            log.info("Added {} new transactions to account {}",
+                    newTransactions.size(), account.getAccountId());
         }
         bankAccountRepository.saveAll(bankAccounts);
     }
