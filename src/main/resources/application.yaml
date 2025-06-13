@@ -1,0 +1,40 @@
+spring:
+  application:
+    name: expense-analyzer
+  datasource:
+    url: ${DATABASE_URL}
+  output:
+    ansi:
+      enabled: ALWAYS
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+        default_schema: expense_analyzer
+    open-in-view: false
+  jackson:
+    serialization:
+      FAIL_ON_EMPTY_BEANS: false
+    date-format: yyyy-MM-dd'T'HH:mm:ss.SSS'Z'
+    time-zone: UTC
+
+rsa:
+  private-key: ${RSA_PRIVATE_KEY}
+  public-key: ${RSA_PUBLIC_KEY}
+
+server:
+  port: ${PORT:8080}
+  address: 0.0.0.0
+
+ai:
+  api:
+    key: ${AI_API_KEY}
+
+gocardless:
+  api:
+    base-url: https://bankaccountdata.gocardless.com/api/v2
+    refresh-token: ${GOCARDLESS_REFRESH_TOKEN}

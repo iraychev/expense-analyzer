@@ -35,3 +35,6 @@ build/
 /src/main/resources/application-local.yaml
 /src/main/resources/certs/
 *.pem
+/src/main/resources/cached_transactions_dsk.json
+/src/main/resources/cached_transactions_revolut.json
+/src/main/resources/cached_transactions_unicredit.json
