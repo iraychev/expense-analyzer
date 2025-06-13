@@ -138,7 +138,7 @@ public class GoCardlessIntegrationService {
 
             Resource resource = getResourceFromIban(accountIban);
 
-            if (resource.exists()) {
+            if (resource != null && resource.exists()) {
                 try (InputStream in = resource.getInputStream()) {
                     JsonNode rootNode = new ObjectMapper().readTree(in);
                     JsonNode bookedTransactions = rootNode.path("transactions").path("booked");
@@ -155,13 +155,13 @@ public class GoCardlessIntegrationService {
     }
 
     private Resource getResourceFromIban(String iban) {
-        Resource resource;
+        Resource resource = null;
 
         switch (iban) {
             case "LT143250059635469546" -> resource = new ClassPathResource("cached_transactions_revolut.json");
             case "BG16UNCR70001598168484" -> resource = new ClassPathResource("cached_transactions_unicredit.json");
             case "BG68STSA93000027489927" -> resource = new ClassPathResource("cached_transactions_dsk.json");
-            default -> throw new BankIntegrationException("No cached transactions for account with IBAN: " + iban);
+            default -> log.error("No cached transactions for account with IBAN: {}", iban);
         }
         return resource;
     }
