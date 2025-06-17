@@ -75,9 +75,7 @@ public class SecurityConfig {
    @Bean
    CorsConfigurationSource corsConfigurationSource() {
        CorsConfiguration config = new CorsConfiguration();
-       // default react localhost
-       config.addAllowedOrigin("http://localhost:5173");
-       // react native
+       // default react native localhost port
        config.addAllowedOrigin("http://localhost:8081");
        config.addAllowedMethod("*");
        config.addAllowedHeader("*");
