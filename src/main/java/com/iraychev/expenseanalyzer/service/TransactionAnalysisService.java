@@ -248,7 +248,172 @@ public class TransactionAnalysisService {
             }
         }
 
+        // 4. Month-over-month spending trend
+        if (currentMonthExpense.compareTo(BigDecimal.ZERO) > 0 && lastMonthExpense.compareTo(BigDecimal.ZERO) > 0) {
+            BigDecimal difference = currentMonthExpense.subtract(lastMonthExpense);
+            BigDecimal percentageChange = difference.multiply(BigDecimal.valueOf(100))
+                .divide(lastMonthExpense, 1, java.math.RoundingMode.HALF_UP);
+
+            String trend = percentageChange.compareTo(BigDecimal.ZERO) > 0 ? "increased" : "decreased";
+            String sentiment = percentageChange.compareTo(BigDecimal.ZERO) > 0 ? "Consider reviewing your budget." : "Great job controlling your spending!";
+
+            // Only show significant changes (more than 5%)
+            if (percentageChange.abs().compareTo(new BigDecimal("5")) > 0) {
+                String analysisText = String.format(
+                    "Your spending has %s by %.1f%% compared to last month. %s",
+                    trend,
+                    percentageChange.abs(),
+                    sentiment
+                );
+
+                analysisItems.add(AnalysisItemDto.builder()
+                    .period("MONTHLY TREND")
+                    .text(analysisText)
+                    .icon(percentageChange.compareTo(BigDecimal.ZERO) > 0 ? "trending-up" : "trending-down")
+                    .build());
+            }
+        }
+
+        // 5. Recurring subscription detection
+        Map<String, List<TransactionDto>> potentialSubscriptions = findRecurringTransactions(transactions);
+        if (!potentialSubscriptions.isEmpty()) {
+            int totalSubscriptionAmount = potentialSubscriptions.values().stream()
+                .mapToInt(list -> list.getFirst().getAmount().abs().intValue())
+                .sum();
+
+            String merchantsList = potentialSubscriptions.keySet().stream()
+                .limit(3)
+                .collect(Collectors.joining(", "));
+
+            if (potentialSubscriptions.size() > 3) {
+                merchantsList += " and others";
+            }
+
+            String analysisText = String.format(
+                "You have approximately %d recurring payments including %s, totaling around %d %s per month. Review these subscriptions regularly.",
+                potentialSubscriptions.size(),
+                merchantsList,
+                totalSubscriptionAmount,
+                currency
+            );
+
+            analysisItems.add(AnalysisItemDto.builder()
+                .period("SUBSCRIPTIONS")
+                .text(analysisText)
+                .icon("repeat")
+                .build());
+        }
+
+        // 6. Unusually large transactions
+        List<TransactionDto> largeTransactions = findUnusuallyLargeTransactions(transactions);
+        if (!largeTransactions.isEmpty()) {
+            BigDecimal largestAmount = largeTransactions.getFirst().getAmount().abs();
+            String merchant = extractMerchantName(largeTransactions.getFirst().getDescription());
+
+            String analysisText = String.format(
+                "There was an unusually large transaction of %.2f %s to %s. Make sure this was an authorized payment.",
+                largestAmount,
+                currency,
+                merchant
+            );
+
+            analysisItems.add(AnalysisItemDto.builder()
+                .period("UNUSUAL ACTIVITY")
+                .text(analysisText)
+                .icon("alert-circle")
+                .build());
+        }
+
         return analysisItems;
+    }
+
+    /**
+     * Identifies transactions that appear to be recurring subscriptions
+     *
+     * @param transactions List of transactions to analyze
+     * @return Map of merchant names to their recurring transactions
+     */
+    private Map<String, List<TransactionDto>> findRecurringTransactions(List<TransactionDto> transactions) {
+        Map<String, List<TransactionDto>> merchantTransactions = new HashMap<>();
+
+        // Group transactions by description/merchant
+        for (TransactionDto tx : transactions) {
+            if (tx.getAmount().compareTo(BigDecimal.ZERO) < 0) {
+                String merchantName = extractMerchantName(tx.getDescription());
+                if (!merchantName.isEmpty()) {
+                    merchantTransactions.computeIfAbsent(merchantName, k -> new ArrayList<>()).add(tx);
+                }
+            }
+        }
+
+        // Filter to find merchants with consistent payment amounts
+        return merchantTransactions.entrySet().stream()
+            .filter(entry -> {
+                List<TransactionDto> txList = entry.getValue();
+                // Need at least 2 transactions to consider as recurring
+                if (txList.size() < 2) return false;
+
+                // Check if all transactions have same or very similar amounts
+                BigDecimal firstAmount = txList.getFirst().getAmount().abs();
+                return txList.stream().allMatch(tx ->
+                    tx.getAmount().abs().subtract(firstAmount).abs().compareTo(BigDecimal.ONE) <= 0
+                );
+            })
+            .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+    }
+
+    /**
+     * Identifies transactions that are unusually large compared to the user's average spending
+     *
+     * @param transactions List of transactions to analyze
+     * @return List of unusually large transactions
+     */
+    private List<TransactionDto> findUnusuallyLargeTransactions(List<TransactionDto> transactions) {
+        if (transactions.isEmpty()) return List.of();
+
+        BigDecimal totalAmount = transactions.stream()
+            .filter(tx -> tx.getAmount().compareTo(BigDecimal.ZERO) < 0) // Only expenses
+            .map(tx -> tx.getAmount().abs())
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal count = BigDecimal.valueOf(transactions.stream()
+            .filter(tx -> tx.getAmount().compareTo(BigDecimal.ZERO) < 0)
+            .count());
+
+        if (count.compareTo(BigDecimal.ZERO) == 0) return List.of();
+
+        BigDecimal average = totalAmount.divide(count, 2, java.math.RoundingMode.HALF_UP);
+        BigDecimal threshold = average.multiply(new BigDecimal("3")); // 3x the average
+
+        // Find transactions larger than threshold
+        return transactions.stream()
+            .filter(tx -> tx.getAmount().compareTo(BigDecimal.ZERO) < 0) // Only expenses
+            .filter(tx -> tx.getAmount().abs().compareTo(threshold) > 0)
+            .sorted((tx1, tx2) -> tx2.getAmount().abs().compareTo(tx1.getAmount().abs())) // Largest first
+            .limit(3) // Only the top 3
+            .collect(Collectors.toList());
+    }
+
+    /**
+     * Extracts a merchant name from transaction description
+     *
+     * @param description The transaction description
+     * @return A simplified merchant name
+     */
+    private String extractMerchantName(String description) {
+        if (description == null || description.isEmpty()) {
+            return "";
+        }
+
+        String[] parts = description.split("\\s+");
+        if (parts.length == 0) return "";
+
+        String merchantName = parts[0];
+        if (merchantName.length() < 3 && parts.length > 1) {
+            merchantName = parts[1];
+        }
+
+        return merchantName.replaceAll("[^a-zA-Z0-9]", "");
     }
 
     private boolean isFoodRelatedCategory(String category) {
