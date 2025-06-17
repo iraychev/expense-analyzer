@@ -24,7 +24,12 @@ public class AiCategorizationService {
 
     @Value("${ai.api.key}")
     private String apiKey;
+
+    @Value("${ai.api.url}")
+    private String baseApiUrl;
+
     private String apiUrl;
+
     private final List<String> validCategories = Arrays.asList(
             "Supermarkets",
             "Financial Services",
@@ -38,6 +43,7 @@ public class AiCategorizationService {
     private final ObjectMapper objectMapper;
 
     public AiCategorizationService() {
+        // Todo: Use web/rest client instead
         this.httpClient = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(10))
                 .build();
@@ -46,7 +52,7 @@ public class AiCategorizationService {
 
     @PostConstruct
     public void init() {
-        this.apiUrl = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=" + apiKey;
+        this.apiUrl = baseApiUrl + "?key=" + apiKey;
     }
 
     public String categorizeRemittance(String remittanceInfoUnstructured) {

@@ -51,7 +51,6 @@ public class BankConnectionService {
     }
 
     public BankConnectionDto updateBankConnection(String username, String requisitionId, boolean isNewConnection) {
-        // Todo: Consider persisting requisitions in the database instead of fetching them every time
         RequisitionDto requisition = goCardlessIntegrationService.getRequisition(requisitionId);
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
@@ -108,7 +107,6 @@ public class BankConnectionService {
             for (String accountId : requisition.getAccounts()) {
                 BankAccount account = BankAccount.builder()
                         .accountId(accountId)
-                        // Todo: Iban can be fetched from the API
                         .iban(goCardlessIntegrationService.getBankAccountIban(accountId))
                         .transactions(new ArrayList<>())
                         .bankConnection(bankConnection)
