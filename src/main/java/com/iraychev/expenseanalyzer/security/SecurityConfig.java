@@ -56,6 +56,7 @@ public class SecurityConfig {
                )
                .authorizeHttpRequests(auth -> auth
                        .requestMatchers(HttpMethod.POST, "/api/v1/token").permitAll()
+                       .requestMatchers(HttpMethod.POST, "/api/v1/users").permitAll()
                        .requestMatchers(
                                 antMatcher("/swagger-ui.html"),
                                 antMatcher("/swagger-ui/**"),
