@@ -14,19 +14,26 @@ import java.util.regex.Pattern;
 @RequiredArgsConstructor
 public class CategoryService {
     private static final Logger log = LoggerFactory.getLogger(CategoryService.class);
+    private static final String OTHER_CATEGORY = "Other";
     private final VendorCategoryMappingService vendorCategoryMappingService;
     private final AiCategorizationService aiCategorizationService;
 
     public String categorizeTransaction(String remittanceInfo) {
+        if (remittanceInfo == null || remittanceInfo.isBlank()) {
+            return OTHER_CATEGORY;
+        }
+
         String vendor = extractVendorFromRemittanceInfo(remittanceInfo.toLowerCase());
         Optional<String> categoryOpt = vendorCategoryMappingService.getCategoryForVendor(vendor);
-        if (categoryOpt.isPresent()) {
+        if (categoryOpt.isPresent() && !OTHER_CATEGORY.equalsIgnoreCase(categoryOpt.get())) {
             return categoryOpt.get();
         } else {
             log.info("Vendor {} not found in the database, categorizing...", vendor);
             String aiCategory = aiCategorizationService.categorizeRemittance(remittanceInfo);
 
-            vendorCategoryMappingService.save(VendorCategoryMapping.builder().category(aiCategory).vendor(vendor).build());
+            if (!OTHER_CATEGORY.equalsIgnoreCase(aiCategory)) {
+                vendorCategoryMappingService.save(VendorCategoryMapping.builder().category(aiCategory).vendor(vendor).build());
+            }
             return aiCategory;
         }
     }

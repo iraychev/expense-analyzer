@@ -32,7 +32,13 @@ public class Transaction {
     private LocalDateTime transactionDate;
 
     private String category;
-    
+
+    @Column
+    private Integer otherRetryCount = 0;
+
+    @Column
+    private LocalDateTime otherNextRetryAt;
+
     @Column
     private String description;
 

@@ -20,6 +20,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -134,6 +135,12 @@ public class BankConnectionService {
                     .map(transactionDto -> {
                         Transaction transaction = transactionMapper.toEntity(transactionDto);
                         transaction.setBankAccount(account);
+                        transaction.setOtherRetryCount(0);
+                        if ("Other".equalsIgnoreCase(transaction.getCategory())) {
+                            transaction.setOtherNextRetryAt(LocalDateTime.now().plusDays(1));
+                        } else {
+                            transaction.setOtherNextRetryAt(null);
+                        }
                         return transaction;
                     })
                     .toList();
