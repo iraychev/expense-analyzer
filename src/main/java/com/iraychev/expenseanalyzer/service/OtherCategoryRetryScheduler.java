@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 
 @Service
@@ -53,7 +54,7 @@ public class OtherCategoryRetryScheduler {
     }
 
     private OtherRetryRunResponse executeRetryBatch() {
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
         List<Transaction> dueTransactions = transactionRepository.findDueOtherRetries(
                 now,
                 maxRetries,

@@ -21,6 +21,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -137,7 +138,7 @@ public class BankConnectionService {
                         transaction.setBankAccount(account);
                         transaction.setOtherRetryCount(0);
                         if ("Other".equalsIgnoreCase(transaction.getCategory())) {
-                            transaction.setOtherNextRetryAt(LocalDateTime.now().plusDays(1));
+                            transaction.setOtherNextRetryAt(LocalDateTime.now(ZoneOffset.UTC).plusDays(1));
                         } else {
                             transaction.setOtherNextRetryAt(null);
                         }

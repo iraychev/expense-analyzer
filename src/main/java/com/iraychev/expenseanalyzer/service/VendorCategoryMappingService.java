@@ -13,8 +13,12 @@ public class VendorCategoryMappingService {
     @Autowired
     private VendorCategoryMappingRepository vendorCategoryMappingRepository;
 
+    public Optional<VendorCategoryMapping> getMappingForVendor(String vendor) {
+        return vendorCategoryMappingRepository.findByVendor(vendor);
+    }
+
     public Optional<String> getCategoryForVendor(String vendor) {
-        return vendorCategoryMappingRepository.findByVendor(vendor)
+        return getMappingForVendor(vendor)
                 .map(VendorCategoryMapping::getCategory);
     }
 

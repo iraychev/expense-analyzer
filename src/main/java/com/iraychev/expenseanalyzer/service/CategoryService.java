@@ -24,18 +24,22 @@ public class CategoryService {
         }
 
         String vendor = extractVendorFromRemittanceInfo(remittanceInfo.toLowerCase());
-        Optional<String> categoryOpt = vendorCategoryMappingService.getCategoryForVendor(vendor);
-        if (categoryOpt.isPresent() && !OTHER_CATEGORY.equalsIgnoreCase(categoryOpt.get())) {
-            return categoryOpt.get();
-        } else {
-            log.info("Vendor {} not found in the database, categorizing...", vendor);
-            String aiCategory = aiCategorizationService.categorizeRemittance(remittanceInfo);
-
-            if (!OTHER_CATEGORY.equalsIgnoreCase(aiCategory)) {
-                vendorCategoryMappingService.save(VendorCategoryMapping.builder().category(aiCategory).vendor(vendor).build());
-            }
-            return aiCategory;
+        Optional<VendorCategoryMapping> mappingOpt = vendorCategoryMappingService.getMappingForVendor(vendor);
+        if (mappingOpt.isPresent() && !OTHER_CATEGORY.equalsIgnoreCase(mappingOpt.get().getCategory())) {
+            return mappingOpt.get().getCategory();
         }
+
+        log.info("Vendor {} not found in the database, categorizing...", vendor);
+        String aiCategory = aiCategorizationService.categorizeRemittance(remittanceInfo);
+
+        if (!OTHER_CATEGORY.equalsIgnoreCase(aiCategory)) {
+            VendorCategoryMapping mapping = mappingOpt.orElseGet(
+                    () -> VendorCategoryMapping.builder().vendor(vendor).build()
+            );
+            mapping.setCategory(aiCategory);
+            vendorCategoryMappingService.save(mapping);
+        }
+        return aiCategory;
     }
 
     private String extractVendorFromRemittanceInfo(String remittanceInfo) {
