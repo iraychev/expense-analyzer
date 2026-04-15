@@ -39,3 +39,11 @@ gocardless:
   api:
     base-url: https://bankaccountdata.gocardless.com/api/v2
     refresh-token: ${GOCARDLESS_REFRESH_TOKEN}
+
+categorization:
+  other-retry:
+    max-retries: 3
+    batch-size: 50
+    cron: "0 0 3 * * *"
+    zone: "UTC"
+
