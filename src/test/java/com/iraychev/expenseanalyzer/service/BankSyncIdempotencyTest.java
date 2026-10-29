@@ -36,6 +36,8 @@ class BankSyncIdempotencyTest {
     private static final LocalDateTime DAY = LocalDateTime.of(2026, 3, 1, 0, 0);
 
     private final List<TransactionDto> bank = new ArrayList<>();
+    private final org.springframework.context.ApplicationEventPublisher publisher =
+            mock(org.springframework.context.ApplicationEventPublisher.class);
     private BankConnectionService service;
     private BankAccount account;
 
@@ -68,7 +70,7 @@ class BankSyncIdempotencyTest {
 
         service = new BankConnectionService(goCardless, userRepository, accountRepository, accountMapper,
                 connectionRepository, connectionMapper, transactionMapper,
-                mock(com.iraychev.expenseanalyzer.categorization.TransactionCategorizationService.class));
+                publisher);
     }
 
     private static TransactionDto tx(String id) {
@@ -105,5 +107,31 @@ class BankSyncIdempotencyTest {
 
         assertEquals(2, account.getTransactions().size());
         assertEquals("t1", legacy.getExternalId());
+    }
+
+    @Test
+    void newTransactionsAreSavedPendingWithoutAnyCategorizationAndTheWorkerIsToldOnce() {
+        bank.add(tx("t1"));
+
+        service.updateBankConnection("u", "req", false);
+
+        Transaction saved = account.getTransactions().get(0);
+        assertEquals(com.iraychev.expenseanalyzer.domain.enums.CategoryStatus.PENDING, saved.getCategoryStatus());
+        assertEquals("Other", saved.getCategory());
+        org.mockito.Mockito.verify(publisher).publishEvent(
+                new com.iraychev.expenseanalyzer.categorization.TransactionsSyncedEvent(1));
+
+        service.updateBankConnection("u", "req", false);
+        org.mockito.Mockito.verifyNoMoreInteractions(publisher);
+    }
+
+    @Test
+    void aFailingEventPublisherNeverFailsTheSync() {
+        bank.add(tx("t1"));
+        org.mockito.Mockito.doThrow(new IllegalStateException("boom")).when(publisher).publishEvent(any(Object.class));
+
+        service.updateBankConnection("u", "req", false);
+
+        assertEquals(1, account.getTransactions().size());
     }
 }

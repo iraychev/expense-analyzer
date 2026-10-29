@@ -64,11 +64,17 @@ public class Transaction {
     @Column(name = "categorizer_version")
     private Integer categorizerVersion;
 
-    @Column
-    private Integer otherRetryCount = 0;
+    /** Failed categorization attempts so far (column kept from the old "Other" retry counter). */
+    @Column(name = "other_retry_count")
+    private Integer retryCount = 0;
 
-    @Column
-    private LocalDateTime otherNextRetryAt;
+    /** Earliest time the next categorization attempt may run (column kept from the old retry timestamp). */
+    @Column(name = "other_next_retry_at")
+    private LocalDateTime nextRetryAt;
+
+    /** Set while a worker has claimed this row; a stale value (lease expired) means the worker died. */
+    @Column(name = "claimed_at")
+    private LocalDateTime claimedAt;
 
     @Column
     private String description;

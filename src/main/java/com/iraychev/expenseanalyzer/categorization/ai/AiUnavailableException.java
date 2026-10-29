@@ -6,7 +6,10 @@ import lombok.Getter;
 @Getter
 public class AiUnavailableException extends Exception {
 
-    /** HTTP status of the failed call, or 0 for network/parse problems. */
+    /** Status used when the circuit breaker rejected the call without contacting the AI. */
+    public static final int CIRCUIT_OPEN = -1;
+
+    /** HTTP status of the failed call, 0 for network/parse problems, {@link #CIRCUIT_OPEN} for a rejected call. */
     private final int statusCode;
 
     public AiUnavailableException(String message, int statusCode, Throwable cause) {
@@ -18,12 +21,24 @@ public class AiUnavailableException extends Exception {
         this(message, statusCode, null);
     }
 
-    /** Rate limited or server side error: worth retrying later. */
+    public static AiUnavailableException circuitOpen() {
+        return new AiUnavailableException("AI circuit breaker is open", CIRCUIT_OPEN);
+    }
+
+    public boolean isCircuitOpen() {
+        return statusCode == CIRCUIT_OPEN;
+    }
+
     public boolean isRateLimited() {
         return statusCode == 429;
     }
 
     public boolean isServerError() {
         return statusCode >= 500;
+    }
+
+    /** Worth another attempt: rate limit, server error, network or response problems. Not auth/model/request errors. */
+    public boolean isTransient() {
+        return isRateLimited() || isServerError() || statusCode == 0;
     }
 }

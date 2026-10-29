@@ -1,10 +1,12 @@
 package com.iraychev.expenseanalyzer.service;
 
-import com.iraychev.expenseanalyzer.categorization.TransactionCategorizationService;
+import com.iraychev.expenseanalyzer.categorization.Category;
+import com.iraychev.expenseanalyzer.categorization.TransactionsSyncedEvent;
 import com.iraychev.expenseanalyzer.domain.entity.BankAccount;
 import com.iraychev.expenseanalyzer.domain.entity.BankConnection;
 import com.iraychev.expenseanalyzer.domain.entity.Transaction;
 import com.iraychev.expenseanalyzer.domain.entity.User;
+import com.iraychev.expenseanalyzer.domain.enums.CategoryStatus;
 import com.iraychev.expenseanalyzer.dto.BankAccountDto;
 import com.iraychev.expenseanalyzer.dto.BankConnectionDto;
 import com.iraychev.expenseanalyzer.dto.RequisitionDto;
@@ -21,6 +23,7 @@ import com.iraychev.expenseanalyzer.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -45,7 +48,7 @@ public class BankConnectionService {
     private final BankConnectionRepository bankConnectionRepository;
     private final BankConnectionMapper bankConnectionMapper;
     private final TransactionMapper transactionMapper;
-    private final TransactionCategorizationService categorizationService;
+    private final ApplicationEventPublisher eventPublisher;
 
     /** GoCardless allows only 4 transaction fetches per account per day. */
     @Value("${sync.min-interval:6h}")
@@ -109,13 +112,14 @@ public class BankConnectionService {
                 .toList();
 
         int synced = 0;
+        int added = 0;
         RateLimitException rateLimited = null;
         for (BankAccount account : dueAccounts) {
             try {
                 BankAccountDto fetched = goCardlessIntegrationService
                         .updateBankAccountsWithFetchedTransactions(List.of(bankAccountMapper.toDTO(account)))
                         .get(0);
-                mergeFetchedTransactions(account, fetched);
+                added += mergeFetchedTransactions(account, fetched);
                 account.setLastSyncedAt(now);
                 synced++;
             } catch (RateLimitException e) {
@@ -131,6 +135,7 @@ public class BankConnectionService {
         bankAccountRepository.saveAll(bankAccounts);
         bankConnection.setAccounts(bankAccounts);
         bankConnection = bankConnectionRepository.save(bankConnection);
+        publishSynced(added);
 
         BankConnectionDto result = bankConnectionMapper.toDTO(bankConnection);
         boolean throttled = !bankAccounts.isEmpty() && dueAccounts.isEmpty();
@@ -194,29 +199,45 @@ public class BankConnectionService {
         return bankAccountRepository.saveAll(bankAccounts);
     }
 
-    private void mergeFetchedTransactions(BankAccount account, BankAccountDto dto) {
-        {
-            if (dto.getTransactions() == null) {
-                return;
-            }
+    /** Adds the fetched transactions that are not stored yet and returns how many were added. */
+    private int mergeFetchedTransactions(BankAccount account, BankAccountDto dto) {
+        if (dto.getTransactions() == null) {
+            return 0;
+        }
 
-            // Keep only transactions that are not stored yet (by bank transaction id, with a multiset
-            // fallback on date/amount/description for legacy rows without an id).
-            List<Transaction> newTransactions = TransactionMerger
-                    .selectNew(account.getTransactions(), dto.getTransactions()).stream()
-                    .map(transactionDto -> {
-                        Transaction transaction = transactionMapper.toEntity(transactionDto);
-                        transaction.setBankAccount(account);
-                        transaction.setOtherRetryCount(0);
-                        return transaction;
-                    })
-                    .toList();
+        // Keep only transactions that are not stored yet (by bank transaction id, with a multiset
+        // fallback on date/amount/description for legacy rows without an id).
+        List<Transaction> newTransactions = TransactionMerger
+                .selectNew(account.getTransactions(), dto.getTransactions()).stream()
+                .map(transactionDto -> {
+                    Transaction transaction = transactionMapper.toEntity(transactionDto);
+                    transaction.setBankAccount(account);
+                    // Saved immediately; the worker categorizes asynchronously (no AI in the request path)
+                    transaction.setCategory(Category.OTHER.key());
+                    transaction.setCategoryStatus(CategoryStatus.PENDING);
+                    transaction.setCategorySource(null);
+                    transaction.setRetryCount(0);
+                    transaction.setNextRetryAt(null);
+                    return transaction;
+                })
+                .toList();
 
-            categorizationService.categorize(newTransactions, account.getBankConnection());
-            account.getTransactions().addAll(newTransactions);
+        account.getTransactions().addAll(newTransactions);
 
-            log.info("Added {} new transactions to account {}",
-                    newTransactions.size(), account.getAccountId());
+        log.info("Added {} new transactions to account {}",
+                newTransactions.size(), account.getAccountId());
+        return newTransactions.size();
+    }
+
+    /** Never lets a failure to wake the worker affect the sync: the scheduled run picks the rows up anyway. */
+    private void publishSynced(int added) {
+        if (added <= 0) {
+            return;
+        }
+        try {
+            eventPublisher.publishEvent(new TransactionsSyncedEvent(added));
+        } catch (RuntimeException e) {
+            log.warn("Could not publish sync event", e);
         }
     }
 }

@@ -45,12 +45,18 @@ gocardless:
 
 categorization:
   ai:
-    batch-size: 25
-  other-retry:
-    max-retries: 3
-    batch-size: 50
-    cron: "0 0 3 * * *"
-    zone: "UTC"
+    batch-size: 25            # distinct merchants per AI request
+    concurrency: 2            # parallel AI requests
+    max-attempts: 3           # per request, with exponential backoff on 429/5xx
+    retry-base-delay: PT2S
+    circuit-failure-threshold: 5
+    circuit-cooldown: PT5M
+  worker:
+    interval: PT1M
+    claim-size: 100
+    max-retries: 5            # failed attempts before a row becomes FAILED
+    retry-base-delay: PT5M    # doubles per attempt
+    lease: PT10M
 
 
 sync:
