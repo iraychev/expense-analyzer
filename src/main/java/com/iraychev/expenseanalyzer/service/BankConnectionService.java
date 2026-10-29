@@ -32,9 +32,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -202,15 +200,10 @@ public class BankConnectionService {
                 return;
             }
 
-            Set<String> existingDescriptions = account.getTransactions().stream()
-                    .map(Transaction::getDescription)
-                    .filter(Objects::nonNull)
-                    .collect(Collectors.toSet());
-
-            // Filter out transactions that already exist (based on description)
-            List<Transaction> newTransactions = dto.getTransactions().stream()
-                    .filter(transactionDto -> transactionDto.getDescription() != null
-                            && !existingDescriptions.contains(transactionDto.getDescription()))
+            // Keep only transactions that are not stored yet (by bank transaction id, with a multiset
+            // fallback on date/amount/description for legacy rows without an id).
+            List<Transaction> newTransactions = TransactionMerger
+                    .selectNew(account.getTransactions(), dto.getTransactions()).stream()
                     .map(transactionDto -> {
                         Transaction transaction = transactionMapper.toEntity(transactionDto);
                         transaction.setBankAccount(account);

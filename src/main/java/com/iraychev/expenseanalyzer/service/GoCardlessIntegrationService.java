@@ -204,7 +204,12 @@ public class GoCardlessIntegrationService {
                 }
 
                 String decodedRemittanceInfo = decodeUnicode(remittanceInformationUnstructured);
+                String externalId = transactionNode.path("transactionId").asText("");
+                if (externalId.isBlank()) {
+                    externalId = transactionNode.path("internalTransactionId").asText("");
+                }
                 TransactionDto transactionDto = TransactionDto.builder()
+                        .externalId(externalId.isBlank() ? null : externalId)
                         .amount(new BigDecimal(transactionNode.path("transactionAmount").path("amount").asText()))
                         .currency(transactionNode.path("transactionAmount").path("currency").asText())
                         .valueDate(LocalDate.parse(transactionNode.path("valueDate").asText()).atStartOfDay())

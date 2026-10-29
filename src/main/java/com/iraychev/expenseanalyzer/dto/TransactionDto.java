@@ -15,6 +15,7 @@ import java.time.LocalDateTime;
 @Builder
 public class TransactionDto {
     private Long id;
+    private String externalId;
     private BigDecimal amount;
     private String currency;
     private LocalDateTime valueDate;

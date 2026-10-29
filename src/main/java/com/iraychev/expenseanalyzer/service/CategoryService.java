@@ -15,6 +15,7 @@ import java.util.regex.Pattern;
 public class CategoryService {
     private static final Logger log = LoggerFactory.getLogger(CategoryService.class);
     private static final String OTHER_CATEGORY = "Other";
+    static final String UNKNOWN_VENDOR = "Unknown Vendor";
     private final VendorCategoryMappingService vendorCategoryMappingService;
     private final AiCategorizationService aiCategorizationService;
 
@@ -24,7 +25,11 @@ public class CategoryService {
         }
 
         String vendor = extractVendorFromRemittanceInfo(remittanceInfo.toLowerCase());
-        Optional<VendorCategoryMapping> mappingOpt = vendorCategoryMappingService.getMappingForVendor(vendor);
+        // The placeholder is not a merchant: never read or write the cache under it.
+        boolean cacheable = !UNKNOWN_VENDOR.equals(vendor);
+        Optional<VendorCategoryMapping> mappingOpt = cacheable
+                ? vendorCategoryMappingService.getMappingForVendor(vendor)
+                : Optional.empty();
         if (mappingOpt.isPresent() && !OTHER_CATEGORY.equalsIgnoreCase(mappingOpt.get().getCategory())) {
             return mappingOpt.get().getCategory();
         }
@@ -32,7 +37,7 @@ public class CategoryService {
         log.info("Vendor {} not found in the database, categorizing...", vendor);
         String aiCategory = aiCategorizationService.categorizeRemittance(remittanceInfo);
 
-        if (!OTHER_CATEGORY.equalsIgnoreCase(aiCategory)) {
+        if (cacheable && !OTHER_CATEGORY.equalsIgnoreCase(aiCategory)) {
             VendorCategoryMapping mapping = mappingOpt.orElseGet(
                     () -> VendorCategoryMapping.builder().vendor(vendor).build()
             );
@@ -49,7 +54,7 @@ public class CategoryService {
         if (matcher.find()) {
             return matcher.group(1).trim();
         } else {
-            return "Unknown Vendor";
+            return UNKNOWN_VENDOR;
         }
     }
 }
