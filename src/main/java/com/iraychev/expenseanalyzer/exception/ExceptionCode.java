@@ -10,7 +10,9 @@ public enum ExceptionCode {
     RESOURCE_NOT_FOUND("ERR001", "Resource not found."),
     NULL_REQUEST_FIELDS("ERR002", "Request contains missing fields"),
     BANK_INTEGRATION_ERROR("ERR003", "Error while creating bank integration."),
-    ALREADY_EXISTS("ERR004", "Resource already exists.");
+    ALREADY_EXISTS("ERR004", "Resource already exists."),
+    INVALID_CREDENTIALS("ERR005", "Invalid credentials."),
+    VALIDATION_ERROR("ERR006", "Request validation failed.");
 
     private final String value;
     private final String reason;
