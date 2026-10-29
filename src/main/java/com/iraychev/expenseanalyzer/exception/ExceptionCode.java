@@ -12,7 +12,8 @@ public enum ExceptionCode {
     BANK_INTEGRATION_ERROR("ERR003", "Error while creating bank integration."),
     ALREADY_EXISTS("ERR004", "Resource already exists."),
     INVALID_CREDENTIALS("ERR005", "Invalid credentials."),
-    VALIDATION_ERROR("ERR006", "Request validation failed.");
+    VALIDATION_ERROR("ERR006", "Request validation failed."),
+    RATE_LIMITED("ERR007", "Too many requests.");
 
     private final String value;
     private final String reason;

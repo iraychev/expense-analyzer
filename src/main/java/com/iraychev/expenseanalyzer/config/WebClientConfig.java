@@ -7,7 +7,9 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.core.io.buffer.DataBufferUtils;
+import com.iraychev.expenseanalyzer.exception.RateLimitException;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.reactive.function.client.ClientRequest;
 import org.springframework.web.reactive.function.client.ClientResponse;
 import org.springframework.web.reactive.function.client.ExchangeFilterFunction;
@@ -90,6 +92,9 @@ public class WebClientConfig {
     private ExchangeFilterFunction throwOnErrorFilter() {
         return (clientRequest, next) -> next.exchange(clientRequest)
                 .flatMap(response -> {
+                    if (response.statusCode().value() == HttpStatus.TOO_MANY_REQUESTS.value()) {
+                        return response.releaseBody().then(Mono.error(new RateLimitException()));
+                    }
                     if (response.statusCode().isError()) {
                         return DataBufferUtils.join(response.bodyToFlux(DataBuffer.class))
                                 .flatMap(dataBuffer -> {

@@ -48,3 +48,7 @@ categorization:
     cron: "0 0 3 * * *"
     zone: "UTC"
 
+
+sync:
+  # GoCardless allows only 4 transaction fetches per account per day
+  min-interval: ${SYNC_MIN_INTERVAL:6h}

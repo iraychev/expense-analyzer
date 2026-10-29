@@ -19,8 +19,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
 
 @Service
 @Transactional
@@ -105,8 +109,10 @@ public class UserService {
                 .map(BankConnection::getRequisitionId)
                 .toList();
 
+        Map<Long, BankConnectionDto> syncResults = new HashMap<>();
         List<BankConnection> updatedBankConnections = requisitionIds.stream()
                 .map(requisitionId -> bankConnectionService.updateBankConnection(username, requisitionId, false))
+                .peek(bankConnectionDto -> syncResults.put(bankConnectionDto.getId(), bankConnectionDto))
                 .map(bankConnectionDto -> bankConnectionRepository.findById(bankConnectionDto.getId())
                         .orElseThrow(() -> new ResourceNotFoundException("BankConnection not found")))
                 .toList();
@@ -134,7 +140,32 @@ public class UserService {
         userRepository.save(foundUser);
 
         log.info("Successfully updated bank connections for user with username: {}", username);
-        return userMapper.toDTO(foundUser);
+        UserDto result = userMapper.toDTO(foundUser);
+        applySyncInfo(result, syncResults);
+        return result;
+    }
+
+    /** Copies the per-connection throttle info of a sync onto the response and derives the top-level flags. */
+    static void applySyncInfo(UserDto result, Map<Long, BankConnectionDto> syncResults) {
+        if (result.getBankConnections() == null || syncResults.isEmpty()) {
+            return;
+        }
+        result.getBankConnections().forEach(connection -> {
+            BankConnectionDto sync = syncResults.get(connection.getId());
+            if (sync != null) {
+                connection.setThrottled(sync.getThrottled());
+                connection.setNextSyncAvailableAt(sync.getNextSyncAvailableAt());
+            }
+        });
+        boolean allThrottled = syncResults.values().stream().allMatch(s -> Boolean.TRUE.equals(s.getThrottled()));
+        result.setThrottled(allThrottled);
+        if (allThrottled) {
+            syncResults.values().stream()
+                    .map(BankConnectionDto::getNextSyncAvailableAt)
+                    .filter(Objects::nonNull)
+                    .min(Comparator.naturalOrder())
+                    .ifPresent(result::setNextSyncAvailableAt);
+        }
     }
 
     public UserDto linkBankConnection(String username, String requisitionId) {
