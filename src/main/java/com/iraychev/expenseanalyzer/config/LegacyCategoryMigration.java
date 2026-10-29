@@ -8,6 +8,9 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+
 /**
  * Gives rows stored before category statuses existed (status is null) a status, once, at startup:
  * <ul>
@@ -52,8 +55,9 @@ public class LegacyCategoryMigration implements SmartInitializingSingleton {
                     + "where category_status is null and (category is null or lower(category) = 'other') "
                     + "and coalesce(other_retry_count, 0) < ?", LEGACY_MAX_RETRIES);
             int uncategorizable = jdbc.update("update " + table + " set category_status = 'UNCATEGORIZABLE', "
-                    + "categorizer_version = 0, other_next_retry_at = null "
-                    + "where category_status is null and (category is null or lower(category) = 'other')");
+                    + "categorizer_version = 0, other_next_retry_at = ? "
+                    + "where category_status is null and (category is null or lower(category) = 'other')",
+                    LocalDateTime.now(ZoneOffset.UTC).plusDays(30));
             int categorized = jdbc.update("update " + table + " set category_status = 'CATEGORIZED', "
                     + "categorizer_version = 0, other_next_retry_at = null where category_status is null");
             if (pending + uncategorizable + categorized > 0) {

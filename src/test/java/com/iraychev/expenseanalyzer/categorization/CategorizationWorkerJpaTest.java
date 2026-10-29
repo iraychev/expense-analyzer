@@ -121,7 +121,7 @@ class CategorizationWorkerJpaTest {
     private CategorizationWorker newWorker(int maxRetries, int claimSize) {
         MerchantCacheLayer cache = mock(MerchantCacheLayer.class);
         when(cache.resolve(anyList())).thenReturn(Map.of());
-        CategorizationPipeline pipeline = new CategorizationPipeline(new UserOverrideLayer(), cache, new RuleLayer(), ai, 25);
+        CategorizationPipeline pipeline = new CategorizationPipeline(mock(UserOverrideLayer.class), cache, new RuleLayer(), ai, 25);
         TransactionParsers parsers = new TransactionParsers(new UniCreditParser(), new RevolutParser(), new DskParser());
         return new CategorizationWorker(transactions, parsers, pipeline, txManager, claimSize, 20, maxRetries,
                 Duration.ofMinutes(5), Duration.ofMinutes(10), Duration.ofMinutes(5));
@@ -205,7 +205,8 @@ class CategorizationWorkerJpaTest {
         Transaction failed = reload(t);
         assertEquals(CategoryStatus.FAILED, failed.getCategoryStatus());
         assertEquals(3, failed.getRetryCount());
-        assertNull(failed.getNextRetryAt());
+        // FAILED rows wait a day before the nightly job may requeue them
+        assertTrue(failed.getNextRetryAt().isAfter(LocalDateTime.now(ZoneOffset.UTC).plusHours(23)));
         assertEquals(1, last.failed());
 
         // FAILED rows are no longer picked up by the worker
@@ -365,5 +366,31 @@ class CategorizationWorkerJpaTest {
 
         assertEquals(5, stats.claimed());
         assertEquals(5, stats.categorized());
+    }
+
+    @Test
+    void repeatedNightlyFailuresBackOffLongerEachTime() {
+        Transaction t = pending("MYSTERY SHOP", "-3");
+        // already failed for good once (3 attempts) and requeued by the nightly job with the count kept
+        jdbc.update("update expense_analyzer.transactions set other_retry_count = 3 where id = ?", t.getId());
+        aiFailure = new AiUnavailableException("down", 503);
+
+        worker.runNow();
+
+        Transaction r = reload(t);
+        assertEquals(CategoryStatus.FAILED, r.getCategoryStatus());
+        assertEquals(4, r.getRetryCount());
+        assertTrue(r.getNextRetryAt().isAfter(LocalDateTime.now(ZoneOffset.UTC).plusHours(47)), "second failure waits 2 days");
+    }
+
+    @Test
+    void uncategorizableRowsAreLookedAtAgainOnlyMuchLater() {
+        Transaction t = pending("MYSTERY SHOP", "-3");
+
+        worker.runNow();
+
+        Transaction r = reload(t);
+        assertEquals(CategoryStatus.UNCATEGORIZABLE, r.getCategoryStatus());
+        assertTrue(r.getNextRetryAt().isAfter(LocalDateTime.now(ZoneOffset.UTC).plusDays(29)));
     }
 }

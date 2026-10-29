@@ -1,7 +1,9 @@
 package com.iraychev.expenseanalyzer.service;
 
 import com.iraychev.expenseanalyzer.categorization.Category;
+import com.iraychev.expenseanalyzer.categorization.RawTransaction;
 import com.iraychev.expenseanalyzer.categorization.TransactionsSyncedEvent;
+import com.iraychev.expenseanalyzer.categorization.parser.TransactionParsers;
 import com.iraychev.expenseanalyzer.domain.entity.BankAccount;
 import com.iraychev.expenseanalyzer.domain.entity.BankConnection;
 import com.iraychev.expenseanalyzer.domain.entity.Transaction;
@@ -49,6 +51,7 @@ public class BankConnectionService {
     private final BankConnectionMapper bankConnectionMapper;
     private final TransactionMapper transactionMapper;
     private final ApplicationEventPublisher eventPublisher;
+    private final TransactionParsers parsers;
 
     /** GoCardless allows only 4 transaction fetches per account per day. */
     @Value("${sync.min-interval:6h}")
@@ -218,6 +221,7 @@ public class BankConnectionService {
                     transaction.setCategorySource(null);
                     transaction.setRetryCount(0);
                     transaction.setNextRetryAt(null);
+                    transaction.setMerchant(parseMerchant(transaction, account));
                     return transaction;
                 })
                 .toList();
@@ -238,6 +242,21 @@ public class BankConnectionService {
             eventPublisher.publishEvent(new TransactionsSyncedEvent(added));
         } catch (RuntimeException e) {
             log.warn("Could not publish sync event", e);
+        }
+    }
+
+    /** Parsing is pure and cheap; it lets the UI show the merchant (and lets overrides match) before the worker runs. */
+    private String parseMerchant(Transaction transaction, BankAccount account) {
+        try {
+            BankConnection connection = account.getBankConnection();
+            User user = connection == null ? null : connection.getUser();
+            return parsers.parse(new RawTransaction(connection == null ? null : connection.getInstitutionId(),
+                    transaction.getAmount(), transaction.getDescription(), transaction.getCounterpartyName(),
+                    transaction.getBankTypeCode(),
+                    user == null || user.getName() == null ? List.of() : List.of(user.getName()))).merchantKey();
+        } catch (RuntimeException e) {
+            log.warn("Could not parse merchant of a new transaction", e);
+            return null;
         }
     }
 }

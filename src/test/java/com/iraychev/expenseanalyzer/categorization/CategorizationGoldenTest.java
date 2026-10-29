@@ -69,7 +69,7 @@ class CategorizationGoldenTest {
 
         MerchantCacheLayer emptyCache = mock(MerchantCacheLayer.class);
         when(emptyCache.resolve(anyList())).thenReturn(Map.of());
-        pipeline = new CategorizationPipeline(new UserOverrideLayer(), emptyCache, new RuleLayer(), STUB_AI, 25);
+        pipeline = new CategorizationPipeline(mock(UserOverrideLayer.class), emptyCache, new RuleLayer(), STUB_AI, 25);
 
         GoCardlessIntegrationService gocardless = new GoCardlessIntegrationService(null, new ObjectMapper());
         StringBuilder report = new StringBuilder();

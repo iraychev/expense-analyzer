@@ -70,7 +70,10 @@ class BankSyncIdempotencyTest {
 
         service = new BankConnectionService(goCardless, userRepository, accountRepository, accountMapper,
                 connectionRepository, connectionMapper, transactionMapper,
-                publisher);
+                publisher, new com.iraychev.expenseanalyzer.categorization.parser.TransactionParsers(
+                        new com.iraychev.expenseanalyzer.categorization.parser.UniCreditParser(),
+                        new com.iraychev.expenseanalyzer.categorization.parser.RevolutParser(),
+                        new com.iraychev.expenseanalyzer.categorization.parser.DskParser()));
     }
 
     private static TransactionDto tx(String id) {

@@ -51,6 +51,11 @@ categorization:
     retry-base-delay: PT2S
     circuit-failure-threshold: 5
     circuit-cooldown: PT5M
+  nightly:
+    cron: "0 0 3 * * *"
+    zone: UTC
+    batch-size: 500           # FAILED / UNCATEGORIZABLE rows requeued per night
+    version-batch-size: 500   # rows with an outdated categorizer version requeued per night
   worker:
     interval: PT1M
     claim-size: 100

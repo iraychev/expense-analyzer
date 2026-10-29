@@ -58,6 +58,10 @@ public class CategorizationWorker {
                            String description, String counterparty, String typeCode) {
     }
 
+    static final Duration FAILED_RETRY_BASE = Duration.ofDays(1);
+    static final Duration FAILED_RETRY_CAP = Duration.ofDays(7);
+    static final Duration UNCATEGORIZABLE_RETRY_AFTER = Duration.ofDays(30);
+
     private final TransactionRepository repository;
     private final TransactionParsers parsers;
     private final CategorizationPipeline pipeline;
@@ -232,7 +236,8 @@ public class CategorizationWorker {
                         row.setCategory(Category.OTHER.key());
                         row.setCategoryStatus(CategoryStatus.FAILED);
                         row.setCategorySource(null);
-                        row.setNextRetryAt(null);
+                        // The nightly job re-queues FAILED rows once this time has come (1 day, doubling, max 7)
+                        row.setNextRetryAt(now.plus(failedRetryDelay(attempts - maxRetries + 1)));
                         failed++;
                     } else {
                         row.setNextRetryAt(now.plus(backoff(attempts)));
@@ -249,7 +254,14 @@ public class CategorizationWorker {
         row.setCategoryStatus(outcome.status());
         row.setCategorySource(outcome.source());
         row.setCategorizerVersion(CategorizationPipeline.VERSION);
-        row.setNextRetryAt(null);
+        // UNCATEGORIZABLE rows are looked at again rarely, by the nightly job
+        row.setNextRetryAt(outcome.status() == CategoryStatus.UNCATEGORIZABLE ? now.plus(UNCATEGORIZABLE_RETRY_AFTER) : null);
+    }
+
+    /** Wait before the nightly job retries a FAILED row for the nth time: 1 day, doubling, at most 7 days. */
+    static Duration failedRetryDelay(int nth) {
+        Duration delay = FAILED_RETRY_BASE.multipliedBy(1L << Math.min(10, Math.max(0, nth - 1)));
+        return delay.compareTo(FAILED_RETRY_CAP) > 0 ? FAILED_RETRY_CAP : delay;
     }
 
     /** retryBaseDelay * 2^(attempt-1), capped at one day. */
