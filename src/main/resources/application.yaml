@@ -38,7 +38,8 @@ ai:
 gocardless:
   api:
     base-url: https://bankaccountdata.gocardless.com/api/v2
-    refresh-token: ${GOCARDLESS_REFRESH_TOKEN}
+    secret-id: ${GOCARDLESS_SECRET_ID}
+    secret-key: ${GOCARDLESS_SECRET_KEY}
 
 categorization:
   other-retry:
