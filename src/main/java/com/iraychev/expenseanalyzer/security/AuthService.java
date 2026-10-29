@@ -1,6 +1,6 @@
 package com.iraychev.expenseanalyzer.security;
 
-import com.iraychev.expenseanalyzer.exception.ResourceNotFoundException;
+import com.iraychev.expenseanalyzer.exception.InvalidCredentialsException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -18,7 +18,7 @@ public class AuthService {
 
    public String authenticateAndGenerateToken(String authHeader) {
        if (authHeader == null || !authHeader.startsWith(("Basic "))) {
-           throw new ResourceNotFoundException("Missing or invalid Authorization header");
+           throw new InvalidCredentialsException();
        }
 
        String base64Credentials = authHeader.substring("Basic ".length());
@@ -32,7 +32,7 @@ public class AuthService {
        );
 
        if (!authentication.isAuthenticated()) {
-           throw new ResourceNotFoundException("Invalid user request");
+           throw new InvalidCredentialsException();
        }
        return tokenService.generateToken(authentication);
    }

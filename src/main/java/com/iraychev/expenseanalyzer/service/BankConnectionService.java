@@ -9,6 +9,7 @@ import com.iraychev.expenseanalyzer.dto.BankConnectionDto;
 import com.iraychev.expenseanalyzer.dto.RequisitionDto;
 import com.iraychev.expenseanalyzer.dto.RequisitionRequestDto;
 import com.iraychev.expenseanalyzer.exception.ResourceNotFoundException;
+import com.iraychev.expenseanalyzer.exception.ValidationException;
 import com.iraychev.expenseanalyzer.mapper.BankAccountMapper;
 import com.iraychev.expenseanalyzer.mapper.BankConnectionMapper;
 import com.iraychev.expenseanalyzer.mapper.TransactionMapper;
@@ -26,6 +27,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -41,8 +43,29 @@ public class BankConnectionService {
     private final BankConnectionMapper bankConnectionMapper;
     private final TransactionMapper transactionMapper;
 
+    /**
+     * GoCardless requires references to be unique across the whole account (i.e. across all our users),
+     * so the name the user typed is only used for display and a random suffix is sent instead.
+     */
+    private static final String REFERENCE_SEPARATOR = "_";
+    private static final int REFERENCE_SUFFIX_LENGTH = 8;
+
     public RequisitionDto createRequisition(RequisitionRequestDto requestDto) {
+        String displayName = requestDto.getReference() == null ? "" : requestDto.getReference().trim();
+        if (displayName.isEmpty()) {
+            throw new ValidationException("reference", "Please provide a connection name");
+        }
+        requestDto.setReference(displayName + REFERENCE_SEPARATOR
+                + UUID.randomUUID().toString().replace("-", "").substring(0, REFERENCE_SUFFIX_LENGTH));
         return goCardlessIntegrationService.createRequisition(requestDto);
+    }
+
+    static String toDisplayReference(String reference) {
+        if (reference == null) {
+            return null;
+        }
+        int idx = reference.lastIndexOf(REFERENCE_SEPARATOR);
+        return idx > 0 && reference.length() - idx - 1 == REFERENCE_SUFFIX_LENGTH ? reference.substring(0, idx) : reference;
     }
 
     public List<BankAccountDto> listAccounts(String requisitionId) {
@@ -93,7 +116,7 @@ public class BankConnectionService {
     private BankConnection createBankConnection(RequisitionDto requisition, User user) {
         BankConnection bankConnection = BankConnection.builder()
                 .requisitionId(requisition.getId())
-                .reference(requisition.getReference())
+                .reference(toDisplayReference(requisition.getReference()))
                 .institutionId(requisition.getInstitutionId())
                 // Todo: Do I need institutionName?
                 .institutionName(requisition.getInstitutionId())

@@ -7,9 +7,11 @@ import com.iraychev.expenseanalyzer.dto.BankConnectionDto;
 import com.iraychev.expenseanalyzer.dto.UserDto;
 import com.iraychev.expenseanalyzer.exception.ResourceAlreadyExistsException;
 import com.iraychev.expenseanalyzer.exception.ResourceNotFoundException;
+import com.iraychev.expenseanalyzer.exception.ValidationException;
 import com.iraychev.expenseanalyzer.mapper.UserMapper;
 import com.iraychev.expenseanalyzer.repository.BankConnectionRepository;
 import com.iraychev.expenseanalyzer.repository.UserRepository;
+import com.iraychev.expenseanalyzer.utils.UserValidator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -18,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 @Service
 @Transactional
@@ -39,13 +42,45 @@ public class UserService {
     }
 
     public UserDto createUser(UserDto userDto) {
+        validateNewUser(userDto);
+        // Login lower-cases the username, so it must be stored that way to be able to sign in.
+        userDto.setUsername(userDto.getUsername().trim().toLowerCase(Locale.ROOT));
+        userDto.setEmail(userDto.getEmail().trim().toLowerCase(Locale.ROOT));
+        userDto.setName(userDto.getName().trim());
+
         if (userRepository.findByUsername(userDto.getUsername()).isPresent()) {
-            throw new ResourceAlreadyExistsException("User with this username already exists");
+            throw new ResourceAlreadyExistsException("This username is already taken", "username");
+        }
+        if (userRepository.findByEmail(userDto.getEmail()).isPresent()) {
+            throw new ResourceAlreadyExistsException("An account with this email already exists", "email");
         }
         userDto.setPassword(bCryptPasswordEncoder.encode(userDto.getPassword()));
 
         User savedUser = userRepository.save(userMapper.toEntity(userDto));
         return userMapper.toDTO(savedUser);
+    }
+
+    private void validateNewUser(UserDto dto) {
+        if (isBlank(dto.getName())) {
+            throw new ValidationException("name", "Full name is required");
+        }
+        if (dto.getName().trim().length() > 100) {
+            throw new ValidationException("name", "Full name must be at most 100 characters");
+        }
+        if (isBlank(dto.getUsername()) || !UserValidator.isValidUsername(dto.getUsername().trim())) {
+            throw new ValidationException("username",
+                    "Username must be 4-20 characters: letters, digits, '.' or '_' (not at the start or end)");
+        }
+        if (isBlank(dto.getEmail()) || !UserValidator.isValidEmail(dto.getEmail().trim())) {
+            throw new ValidationException("email", "Please enter a valid email address");
+        }
+        if (dto.getPassword() == null || !UserValidator.isValidPassword(dto.getPassword())) {
+            throw new ValidationException("password", "Password must be at least 8 characters and contain a letter and a digit");
+        }
+    }
+
+    private static boolean isBlank(String value) {
+        return value == null || value.isBlank();
     }
 
     public UserDto updateProfile(String username, UserDto userDto) {
