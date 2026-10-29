@@ -1,15 +1,13 @@
 package com.iraychev.expenseanalyzer.controller;
 
+import com.iraychev.expenseanalyzer.categorization.CategorizationWorker;
 import com.iraychev.expenseanalyzer.dto.OtherRetryRunResponse;
-import com.iraychev.expenseanalyzer.service.OtherCategoryRetryScheduler;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.ResponseEntity;
-
-import java.time.LocalDateTime;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.verify;
@@ -19,27 +17,23 @@ import static org.mockito.Mockito.when;
 class CategorizationControllerTest {
 
 	@Mock
-	private OtherCategoryRetryScheduler otherCategoryRetryScheduler;
+	private CategorizationWorker worker;
 
 	@InjectMocks
 	private CategorizationController categorizationController;
 
 	@Test
-	void runOtherRetryNowReturnsRetryStats() {
-		OtherRetryRunResponse expected = new OtherRetryRunResponse(
-				LocalDateTime.of(2026, 4, 15, 10, 30),
-				10,
-				6,
-				4,
-				1
-		);
-		when(otherCategoryRetryScheduler.retryOtherCategoriesNow()).thenReturn(expected);
+	void runNowMapsWorkerStatsToTheLegacyResponseShape() {
+		when(worker.runNow()).thenReturn(new CategorizationWorker.RunStats(10, 6, 2, 1, 1));
 
 		ResponseEntity<OtherRetryRunResponse> response = categorizationController.runOtherRetryNow();
 
 		assertEquals(200, response.getStatusCode().value());
-		assertEquals(expected, response.getBody());
-		verify(otherCategoryRetryScheduler).retryOtherCategoriesNow();
+		OtherRetryRunResponse body = response.getBody();
+		assertEquals(10, body.processedCount());
+		assertEquals(6, body.recategorizedCount());
+		assertEquals(4, body.stillOtherCount());
+		assertEquals(1, body.maxRetriesReachedCount());
+		verify(worker).runNow();
 	}
 }
-

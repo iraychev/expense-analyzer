@@ -34,7 +34,6 @@ import java.util.regex.Pattern;
 @RequiredArgsConstructor
 public class GoCardlessIntegrationService {
     private final WebClient webClient;
-    private final CategoryService categoryService;
     private final ObjectMapper objectMapper;
 
     @Value("${gocardless.api.base-url}")
@@ -204,19 +203,41 @@ public class GoCardlessIntegrationService {
                 }
 
                 String decodedRemittanceInfo = decodeUnicode(remittanceInformationUnstructured);
+                String externalId = transactionNode.path("transactionId").asText("");
+                if (externalId.isBlank()) {
+                    externalId = transactionNode.path("internalTransactionId").asText("");
+                }
+                BigDecimal amount = new BigDecimal(transactionNode.path("transactionAmount").path("amount").asText());
                 TransactionDto transactionDto = TransactionDto.builder()
-                        .amount(new BigDecimal(transactionNode.path("transactionAmount").path("amount").asText()))
+                        .externalId(externalId.isBlank() ? null : externalId)
+                        .amount(amount)
                         .currency(transactionNode.path("transactionAmount").path("currency").asText())
                         .valueDate(LocalDate.parse(transactionNode.path("valueDate").asText()).atStartOfDay())
                         .transactionDate(LocalDate.parse(transactionNode.path("bookingDate").asText()).atStartOfDay())
                         .description(decodedRemittanceInfo)
                         .type(type)
-                        .category(categoryService.categorizeTransaction(decodedRemittanceInfo))
+                        .counterpartyName(counterparty(transactionNode, amount))
+                        .bankTypeCode(bankTypeCode(transactionNode))
                         .bankAccountId(account.getId())
                         .build();
                 transactions.add(transactionDto);
             }
         }
         return transactions;
+    }
+
+    /** The other party: the creditor of an outgoing and the debtor of an incoming transaction. */
+    private static String counterparty(JsonNode transactionNode, BigDecimal amount) {
+        String field = amount.signum() <= 0 ? "creditorName" : "debtorName";
+        String name = transactionNode.path(field).asText("").trim().replaceAll("\s+", " ");
+        return name.isEmpty() ? null : name;
+    }
+
+    private static String bankTypeCode(JsonNode transactionNode) {
+        String code = transactionNode.path("proprietaryBankTransactionCode").asText("");
+        if (code.isBlank()) {
+            code = transactionNode.path("bankTransactionCode").asText("");
+        }
+        return code.isBlank() ? null : code;
     }
 }

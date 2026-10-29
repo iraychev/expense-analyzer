@@ -1,13 +1,19 @@
 package com.iraychev.expenseanalyzer.service;
 
+import com.iraychev.expenseanalyzer.categorization.Category;
+import com.iraychev.expenseanalyzer.categorization.RawTransaction;
+import com.iraychev.expenseanalyzer.categorization.TransactionsSyncedEvent;
+import com.iraychev.expenseanalyzer.categorization.parser.TransactionParsers;
 import com.iraychev.expenseanalyzer.domain.entity.BankAccount;
 import com.iraychev.expenseanalyzer.domain.entity.BankConnection;
 import com.iraychev.expenseanalyzer.domain.entity.Transaction;
 import com.iraychev.expenseanalyzer.domain.entity.User;
+import com.iraychev.expenseanalyzer.domain.enums.CategoryStatus;
 import com.iraychev.expenseanalyzer.dto.BankAccountDto;
 import com.iraychev.expenseanalyzer.dto.BankConnectionDto;
 import com.iraychev.expenseanalyzer.dto.RequisitionDto;
 import com.iraychev.expenseanalyzer.dto.RequisitionRequestDto;
+import com.iraychev.expenseanalyzer.exception.RateLimitException;
 import com.iraychev.expenseanalyzer.exception.ResourceNotFoundException;
 import com.iraychev.expenseanalyzer.exception.ValidationException;
 import com.iraychev.expenseanalyzer.mapper.BankAccountMapper;
@@ -18,17 +24,19 @@ import com.iraychev.expenseanalyzer.repository.BankConnectionRepository;
 import com.iraychev.expenseanalyzer.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
-import java.time.ZoneOffset;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
-import java.util.Set;
+import java.util.Optional;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -42,6 +50,12 @@ public class BankConnectionService {
     private final BankConnectionRepository bankConnectionRepository;
     private final BankConnectionMapper bankConnectionMapper;
     private final TransactionMapper transactionMapper;
+    private final ApplicationEventPublisher eventPublisher;
+    private final TransactionParsers parsers;
+
+    /** GoCardless allows only 4 transaction fetches per account per day. */
+    @Value("${sync.min-interval:6h}")
+    private Duration minInterval = Duration.ofHours(6);
 
     /**
      * GoCardless requires references to be unique across the whole account (i.e. across all our users),
@@ -76,31 +90,77 @@ public class BankConnectionService {
     }
 
     public BankConnectionDto updateBankConnection(String username, String requisitionId, boolean isNewConnection) {
-        RequisitionDto requisition = goCardlessIntegrationService.getRequisition(requisitionId);
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
+        // A second "finalize" for the same requisition must not create a duplicate or burn quota again:
+        // it is treated as a regular (throttled) sync of the existing connection.
+        Optional<BankConnection> existing = bankConnectionRepository.findByRequisitionId(requisitionId);
+
         BankConnection bankConnection;
         List<BankAccount> bankAccounts;
-        if(isNewConnection) {
+        boolean createdNow = isNewConnection && existing.isEmpty();
+        if (createdNow) {
+            RequisitionDto requisition = goCardlessIntegrationService.getRequisition(requisitionId);
             bankConnection = createBankConnection(requisition, user);
             bankAccounts = createBankAccounts(requisition, bankConnection);
-        }
-        else {
-            bankConnection = bankConnectionRepository.findByRequisitionId(requisitionId)
-                    .orElseThrow(() -> new ResourceNotFoundException("Bank connection not found"));
+        } else {
+            bankConnection = existing.orElseThrow(() -> new ResourceNotFoundException("Bank connection not found"));
             bankAccounts = bankConnection.getAccounts();
         }
 
-        List<BankAccountDto> updatedAccounts = goCardlessIntegrationService.updateBankAccountsWithFetchedTransactions(bankAccounts.stream()
-                .map(bankAccountMapper::toDTO)
-                .toList());
+        Instant now = Instant.now();
+        List<BankAccount> dueAccounts = bankAccounts.stream()
+                .filter(account -> isSyncDue(account, now))
+                .toList();
 
-        updateBankAccountsWithTransactions(bankAccounts, updatedAccounts);
+        int synced = 0;
+        int added = 0;
+        RateLimitException rateLimited = null;
+        for (BankAccount account : dueAccounts) {
+            try {
+                BankAccountDto fetched = goCardlessIntegrationService
+                        .updateBankAccountsWithFetchedTransactions(List.of(bankAccountMapper.toDTO(account)))
+                        .get(0);
+                added += mergeFetchedTransactions(account, fetched);
+                account.setLastSyncedAt(now);
+                synced++;
+            } catch (RateLimitException e) {
+                log.warn("GoCardless rate limit hit for account {}", account.getAccountId());
+                rateLimited = e;
+                break;
+            }
+        }
+        if (rateLimited != null && synced == 0 && !createdNow) {
+            throw rateLimited;
+        }
+
+        bankAccountRepository.saveAll(bankAccounts);
         bankConnection.setAccounts(bankAccounts);
         bankConnection = bankConnectionRepository.save(bankConnection);
+        publishSynced(added);
 
-        return bankConnectionMapper.toDTO(bankConnection);
+        BankConnectionDto result = bankConnectionMapper.toDTO(bankConnection);
+        boolean throttled = !bankAccounts.isEmpty() && dueAccounts.isEmpty();
+        result.setThrottled(throttled);
+        if (throttled) {
+            result.setNextSyncAvailableAt(nextSyncAvailableAt(bankAccounts));
+        }
+        return result;
+    }
+
+    private boolean isSyncDue(BankAccount account, Instant now) {
+        return account.getLastSyncedAt() == null
+                || !account.getLastSyncedAt().plus(minInterval).isAfter(now);
+    }
+
+    private Instant nextSyncAvailableAt(List<BankAccount> accounts) {
+        return accounts.stream()
+                .map(BankAccount::getLastSyncedAt)
+                .filter(Objects::nonNull)
+                .map(last -> last.plus(minInterval))
+                .min(Comparator.naturalOrder())
+                .orElse(null);
     }
 
     public void deleteBankConnection(String requisitionId) {
@@ -142,38 +202,61 @@ public class BankConnectionService {
         return bankAccountRepository.saveAll(bankAccounts);
     }
 
-    private void updateBankAccountsWithTransactions(List<BankAccount> bankAccounts, List<BankAccountDto> updatedAccounts) {
-        for (int i = 0; i < bankAccounts.size(); i++) {
-            BankAccount account = bankAccounts.get(i);
-            BankAccountDto dto = updatedAccounts.get(i);
-
-            Set<String> existingDescriptions = account.getTransactions().stream()
-                    .map(Transaction::getDescription)
-                    .filter(Objects::nonNull)
-                    .collect(Collectors.toSet());
-
-            // Filter out transactions that already exist (based on description)
-            List<Transaction> newTransactions = dto.getTransactions().stream()
-                    .filter(transactionDto -> transactionDto.getDescription() != null
-                            && !existingDescriptions.contains(transactionDto.getDescription()))
-                    .map(transactionDto -> {
-                        Transaction transaction = transactionMapper.toEntity(transactionDto);
-                        transaction.setBankAccount(account);
-                        transaction.setOtherRetryCount(0);
-                        if ("Other".equalsIgnoreCase(transaction.getCategory())) {
-                            transaction.setOtherNextRetryAt(LocalDateTime.now(ZoneOffset.UTC).plusDays(1));
-                        } else {
-                            transaction.setOtherNextRetryAt(null);
-                        }
-                        return transaction;
-                    })
-                    .toList();
-
-            account.getTransactions().addAll(newTransactions);
-
-            log.info("Added {} new transactions to account {}",
-                    newTransactions.size(), account.getAccountId());
+    /** Adds the fetched transactions that are not stored yet and returns how many were added. */
+    private int mergeFetchedTransactions(BankAccount account, BankAccountDto dto) {
+        if (dto.getTransactions() == null) {
+            return 0;
         }
-        bankAccountRepository.saveAll(bankAccounts);
+
+        // Keep only transactions that are not stored yet (by bank transaction id, with a multiset
+        // fallback on date/amount/description for legacy rows without an id).
+        List<Transaction> newTransactions = TransactionMerger
+                .selectNew(account.getTransactions(), dto.getTransactions()).stream()
+                .map(transactionDto -> {
+                    Transaction transaction = transactionMapper.toEntity(transactionDto);
+                    transaction.setBankAccount(account);
+                    // Saved immediately; the worker categorizes asynchronously (no AI in the request path)
+                    transaction.setCategory(Category.OTHER.key());
+                    transaction.setCategoryStatus(CategoryStatus.PENDING);
+                    transaction.setCategorySource(null);
+                    transaction.setRetryCount(0);
+                    transaction.setNextRetryAt(null);
+                    transaction.setMerchant(parseMerchant(transaction, account));
+                    return transaction;
+                })
+                .toList();
+
+        account.getTransactions().addAll(newTransactions);
+
+        log.info("Added {} new transactions to account {}",
+                newTransactions.size(), account.getAccountId());
+        return newTransactions.size();
+    }
+
+    /** Never lets a failure to wake the worker affect the sync: the scheduled run picks the rows up anyway. */
+    private void publishSynced(int added) {
+        if (added <= 0) {
+            return;
+        }
+        try {
+            eventPublisher.publishEvent(new TransactionsSyncedEvent(added));
+        } catch (RuntimeException e) {
+            log.warn("Could not publish sync event", e);
+        }
+    }
+
+    /** Parsing is pure and cheap; it lets the UI show the merchant (and lets overrides match) before the worker runs. */
+    private String parseMerchant(Transaction transaction, BankAccount account) {
+        try {
+            BankConnection connection = account.getBankConnection();
+            User user = connection == null ? null : connection.getUser();
+            return parsers.parse(new RawTransaction(connection == null ? null : connection.getInstitutionId(),
+                    transaction.getAmount(), transaction.getDescription(), transaction.getCounterpartyName(),
+                    transaction.getBankTypeCode(),
+                    user == null || user.getName() == null ? List.of() : List.of(user.getName()))).merchantKey();
+        } catch (RuntimeException e) {
+            log.warn("Could not parse merchant of a new transaction", e);
+            return null;
+        }
     }
 }

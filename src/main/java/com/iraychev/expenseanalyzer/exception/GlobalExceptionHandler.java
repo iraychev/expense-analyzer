@@ -16,7 +16,8 @@ public class GlobalExceptionHandler {
             BankIntegrationException.class,
             ResourceAlreadyExistsException.class,
             ValidationException.class,
-            InvalidCredentialsException.class
+            InvalidCredentialsException.class,
+            RateLimitException.class
     })
     public ResponseEntity<ExceptionBody> handleCustomException(CustomResponseStatusException e) {
         return handler(e);

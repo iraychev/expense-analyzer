@@ -3,6 +3,7 @@ package com.iraychev.expenseanalyzer.domain.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -22,6 +23,10 @@ public class BankAccount {
 
     @Column(name = "account_id")
     private String accountId;
+
+    /** When the transactions of this account were last fetched from the bank (UTC). */
+    @Column(name = "last_synced_at")
+    private Instant lastSyncedAt;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "bank_connection_id", nullable = false)

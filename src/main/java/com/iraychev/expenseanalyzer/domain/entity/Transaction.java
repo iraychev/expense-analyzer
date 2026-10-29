@@ -1,5 +1,7 @@
 package com.iraychev.expenseanalyzer.domain.entity;
 
+import com.iraychev.expenseanalyzer.domain.enums.CategorySource;
+import com.iraychev.expenseanalyzer.domain.enums.CategoryStatus;
 import com.iraychev.expenseanalyzer.domain.enums.TransactionType;
 import jakarta.persistence.*;
 import lombok.*;
@@ -8,7 +10,8 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "transactions")
+@Table(name = "transactions", uniqueConstraints = @UniqueConstraint(
+        name = "uk_transactions_account_external_id", columnNames = {"bank_account_id", "external_id"}))
 @Getter
 @Setter
 @NoArgsConstructor
@@ -18,6 +21,10 @@ public class Transaction {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    /** The bank's transactionId (or internalTransactionId); null for rows stored before it was recorded. */
+    @Column(name = "external_id")
+    private String externalId;
 
     @Column(nullable = false)
     private BigDecimal amount;
@@ -33,11 +40,41 @@ public class Transaction {
 
     private String category;
 
-    @Column
-    private Integer otherRetryCount = 0;
+    /** Canonical merchant key produced by the parser (null when there is none). */
+    @Column(name = "merchant")
+    private String merchant;
 
-    @Column
-    private LocalDateTime otherNextRetryAt;
+    /** The other party as printed by the bank; input for re-parsing. */
+    @Column(name = "counterparty_name")
+    private String counterpartyName;
+
+    /** Bank specific transaction type code; input for re-parsing. */
+    @Column(name = "bank_type_code")
+    private String bankTypeCode;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "category_status")
+    private CategoryStatus categoryStatus;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "category_source")
+    private CategorySource categorySource;
+
+    /** Version of the rules/prompt that produced the category. */
+    @Column(name = "categorizer_version")
+    private Integer categorizerVersion;
+
+    /** Failed categorization attempts so far (column kept from the old "Other" retry counter). */
+    @Column(name = "other_retry_count")
+    private Integer retryCount = 0;
+
+    /** Earliest time the next categorization attempt may run (column kept from the old retry timestamp). */
+    @Column(name = "other_next_retry_at")
+    private LocalDateTime nextRetryAt;
+
+    /** Set while a worker has claimed this row; a stale value (lease expired) means the worker died. */
+    @Column(name = "claimed_at")
+    private LocalDateTime claimedAt;
 
     @Column
     private String description;
