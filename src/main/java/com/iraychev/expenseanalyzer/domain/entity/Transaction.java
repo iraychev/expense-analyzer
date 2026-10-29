@@ -1,5 +1,7 @@
 package com.iraychev.expenseanalyzer.domain.entity;
 
+import com.iraychev.expenseanalyzer.domain.enums.CategorySource;
+import com.iraychev.expenseanalyzer.domain.enums.CategoryStatus;
 import com.iraychev.expenseanalyzer.domain.enums.TransactionType;
 import jakarta.persistence.*;
 import lombok.*;
@@ -37,6 +39,30 @@ public class Transaction {
     private LocalDateTime transactionDate;
 
     private String category;
+
+    /** Canonical merchant key produced by the parser (null when there is none). */
+    @Column(name = "merchant")
+    private String merchant;
+
+    /** The other party as printed by the bank; input for re-parsing. */
+    @Column(name = "counterparty_name")
+    private String counterpartyName;
+
+    /** Bank specific transaction type code; input for re-parsing. */
+    @Column(name = "bank_type_code")
+    private String bankTypeCode;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "category_status")
+    private CategoryStatus categoryStatus;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "category_source")
+    private CategorySource categorySource;
+
+    /** Version of the rules/prompt that produced the category. */
+    @Column(name = "categorizer_version")
+    private Integer categorizerVersion;
 
     @Column
     private Integer otherRetryCount = 0;

@@ -67,7 +67,8 @@ class BankSyncIdempotencyTest {
         });
 
         service = new BankConnectionService(goCardless, userRepository, accountRepository, accountMapper,
-                connectionRepository, connectionMapper, transactionMapper);
+                connectionRepository, connectionMapper, transactionMapper,
+                mock(com.iraychev.expenseanalyzer.categorization.TransactionCategorizationService.class));
     }
 
     private static TransactionDto tx(String id) {

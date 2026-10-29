@@ -1,5 +1,6 @@
 package com.iraychev.expenseanalyzer.service;
 
+import com.iraychev.expenseanalyzer.categorization.TransactionCategorizationService;
 import com.iraychev.expenseanalyzer.domain.entity.BankAccount;
 import com.iraychev.expenseanalyzer.domain.entity.BankConnection;
 import com.iraychev.expenseanalyzer.domain.entity.Transaction;
@@ -25,8 +26,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.time.LocalDateTime;
-import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -46,6 +45,7 @@ public class BankConnectionService {
     private final BankConnectionRepository bankConnectionRepository;
     private final BankConnectionMapper bankConnectionMapper;
     private final TransactionMapper transactionMapper;
+    private final TransactionCategorizationService categorizationService;
 
     /** GoCardless allows only 4 transaction fetches per account per day. */
     @Value("${sync.min-interval:6h}")
@@ -208,15 +208,11 @@ public class BankConnectionService {
                         Transaction transaction = transactionMapper.toEntity(transactionDto);
                         transaction.setBankAccount(account);
                         transaction.setOtherRetryCount(0);
-                        if ("Other".equalsIgnoreCase(transaction.getCategory())) {
-                            transaction.setOtherNextRetryAt(LocalDateTime.now(ZoneOffset.UTC).plusDays(1));
-                        } else {
-                            transaction.setOtherNextRetryAt(null);
-                        }
                         return transaction;
                     })
                     .toList();
 
+            categorizationService.categorize(newTransactions, account.getBankConnection());
             account.getTransactions().addAll(newTransactions);
 
             log.info("Added {} new transactions to account {}",

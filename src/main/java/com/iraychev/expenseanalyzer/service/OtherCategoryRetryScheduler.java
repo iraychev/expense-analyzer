@@ -1,5 +1,7 @@
 package com.iraychev.expenseanalyzer.service;
 
+import com.iraychev.expenseanalyzer.categorization.TransactionCategorizationService;
+import com.iraychev.expenseanalyzer.domain.entity.BankConnection;
 import com.iraychev.expenseanalyzer.dto.OtherRetryRunResponse;
 import com.iraychev.expenseanalyzer.domain.entity.Transaction;
 import com.iraychev.expenseanalyzer.repository.TransactionRepository;
@@ -14,7 +16,10 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -24,7 +29,7 @@ public class OtherCategoryRetryScheduler {
     private static final String OTHER_CATEGORY = "Other";
 
     private final TransactionRepository transactionRepository;
-    private final CategoryService categoryService;
+    private final TransactionCategorizationService categorizationService;
 
     @Value("${categorization.other-retry.max-retries:3}")
     private int maxRetries;
@@ -69,11 +74,14 @@ public class OtherCategoryRetryScheduler {
         int stillOtherCount = 0;
         int maxRetriesReachedCount = 0;
 
+        Map<BankConnection, List<Transaction>> byConnection = dueTransactions.stream().collect(
+                Collectors.groupingBy(t -> t.getBankAccount().getBankConnection(), LinkedHashMap::new, Collectors.toList()));
+        byConnection.forEach((connection, transactions) -> categorizationService.categorize(transactions, connection));
+
         for (Transaction transaction : dueTransactions) {
             int retryCount = transaction.getOtherRetryCount() == null ? 0 : transaction.getOtherRetryCount();
             transaction.setOtherRetryCount(retryCount);
-            String description = transaction.getDescription();
-            String newCategory = categoryService.categorizeTransaction(description);
+            String newCategory = transaction.getCategory();
 
             if (!OTHER_CATEGORY.equalsIgnoreCase(newCategory)) {
                 transaction.setCategory(newCategory);

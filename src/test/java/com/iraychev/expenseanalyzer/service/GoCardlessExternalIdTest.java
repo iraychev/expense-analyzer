@@ -11,17 +11,12 @@ import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 class GoCardlessExternalIdTest {
 
     @Test
     void everySampleTransactionCarriesAUniqueExternalId() {
-        CategoryService categoryService = mock(CategoryService.class);
-        when(categoryService.categorizeTransaction(any())).thenReturn("Other");
-        GoCardlessIntegrationService service = new GoCardlessIntegrationService(null, categoryService, new ObjectMapper());
+        GoCardlessIntegrationService service = new GoCardlessIntegrationService(null, new ObjectMapper());
 
         for (String iban : List.of("BG16UNCR70001598168484", "LT143250059635469546", "BG68STSA93000027489927")) {
             BankAccountDto account = BankAccountDto.builder().id(1L).iban(iban).accountId("a").build();

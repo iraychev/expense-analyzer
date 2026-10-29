@@ -33,7 +33,9 @@ server:
 ai:
   api:
     key: ${AI_API_KEY}
-    url: https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent
+    base-url: https://generativelanguage.googleapis.com/v1beta/models
+    # Pinned model id (no floating "-latest" alias); override with AI_MODEL when Google retires it
+    model: ${AI_MODEL:gemini-2.5-flash}
 
 gocardless:
   api:
@@ -42,6 +44,8 @@ gocardless:
     secret-key: ${GOCARDLESS_SECRET_KEY}
 
 categorization:
+  ai:
+    batch-size: 25
   other-retry:
     max-retries: 3
     batch-size: 50
