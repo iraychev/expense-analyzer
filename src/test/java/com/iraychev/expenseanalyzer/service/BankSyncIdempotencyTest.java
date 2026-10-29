@@ -74,6 +74,8 @@ class BankSyncIdempotencyTest {
                         new com.iraychev.expenseanalyzer.categorization.parser.UniCreditParser(),
                         new com.iraychev.expenseanalyzer.categorization.parser.RevolutParser(),
                         new com.iraychev.expenseanalyzer.categorization.parser.DskParser()));
+        // These tests exercise merging on repeated syncs; the sync throttle has its own tests.
+        org.springframework.test.util.ReflectionTestUtils.setField(service, "minInterval", java.time.Duration.ZERO);
     }
 
     private static TransactionDto tx(String id) {

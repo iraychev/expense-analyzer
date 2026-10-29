@@ -1,5 +1,6 @@
 package com.iraychev.expenseanalyzer.service;
 
+import com.iraychev.expenseanalyzer.categorization.parser.TransactionParsers;
 import com.iraychev.expenseanalyzer.domain.entity.BankAccount;
 import com.iraychev.expenseanalyzer.domain.entity.BankConnection;
 import com.iraychev.expenseanalyzer.domain.entity.User;
@@ -17,6 +18,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -48,6 +50,8 @@ class BankConnectionSyncThrottleTest {
     @Mock private BankConnectionRepository bankConnectionRepository;
     @Mock private BankConnectionMapper bankConnectionMapper;
     @Mock private TransactionMapper transactionMapper;
+    @Mock private ApplicationEventPublisher eventPublisher;
+    @Mock private TransactionParsers parsers;
 
     private BankConnectionService service;
     private BankAccount account;
@@ -55,7 +59,7 @@ class BankConnectionSyncThrottleTest {
     @BeforeEach
     void setUp() {
         service = new BankConnectionService(goCardless, userRepository, bankAccountRepository, bankAccountMapper,
-                bankConnectionRepository, bankConnectionMapper, transactionMapper);
+                bankConnectionRepository, bankConnectionMapper, transactionMapper, eventPublisher, parsers);
         account = BankAccount.builder().id(1L).accountId("acc-1").transactions(new ArrayList<>()).build();
         BankConnection connection = BankConnection.builder().id(5L).requisitionId("req-1")
                 .accounts(new ArrayList<>(List.of(account))).build();
