@@ -9,4 +9,10 @@ public class TokenResponse {
 
     @JsonProperty("access_expires")
     private Long accessExpires;
+
+    // Only present in /token/new/ responses.
+    private String refresh;
+
+    @JsonProperty("refresh_expires")
+    private Long refreshExpires;
 }

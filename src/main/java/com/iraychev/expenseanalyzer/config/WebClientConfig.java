@@ -1,6 +1,5 @@
 package com.iraychev.expenseanalyzer.config;
 
-import com.iraychev.expenseanalyzer.dto.TokenResponse;
 import com.iraychev.expenseanalyzer.exception.BankIntegrationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -15,9 +14,9 @@ import org.springframework.web.reactive.function.client.ExchangeFilterFunction;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 import java.nio.charset.StandardCharsets;
-import java.util.Collections;
 
 @Slf4j
 @Configuration
@@ -26,12 +25,11 @@ public class WebClientConfig {
     @Value("${gocardless.api.base-url}")
     private String apiBaseUrl;
 
-    @Value("${gocardless.api.refresh-token}")
-    private String refreshToken;
+    private final GoCardlessTokenProvider tokenProvider;
 
-    private volatile String accessToken;
-    private volatile Long accessTokenExpiry;
-    private final Object tokenLock = new Object();
+    public WebClientConfig(GoCardlessTokenProvider tokenProvider) {
+        this.tokenProvider = tokenProvider;
+    }
 
     @Bean
     public WebClient webClient() {
@@ -78,43 +76,15 @@ public class WebClientConfig {
             if (clientRequest.url().getPath().contains("/token/")) {
                 return next.exchange(clientRequest);
             }
-            return Mono.just(getAccessToken())
+            // Token renewal may block on an HTTP call, so keep it off the event loop.
+            return Mono.fromCallable(tokenProvider::getAccessToken)
+                    .subscribeOn(Schedulers.boundedElastic())
                     .flatMap(token -> next.exchange(
                             ClientRequest.from(clientRequest)
                                     .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
                                     .build()
                     ));
         };
-    }
-
-    private String getAccessToken() {
-        if (isAccessTokenExpired()) {
-            synchronized (tokenLock) {
-                if (isAccessTokenExpired()) {
-                    refreshAccessToken();
-                }
-            }
-        }
-        return accessToken;
-    }
-
-    private boolean isAccessTokenExpired() {
-        return accessToken == null || System.currentTimeMillis() >= accessTokenExpiry;
-    }
-
-    private void refreshAccessToken() {
-        log.info("Refreshing access token...");
-        TokenResponse response = WebClient.create(apiBaseUrl)
-                .post()
-                .uri("/token/refresh/")
-                .bodyValue(Collections.singletonMap("refresh", refreshToken))
-                .retrieve()
-                .bodyToMono(TokenResponse.class)
-                .block();
-
-        this.accessToken = response.getAccess();
-        this.accessTokenExpiry = System.currentTimeMillis() + (response.getAccessExpires() * 1000);
-        log.info("New access token expires at: {}", accessTokenExpiry);
     }
 
     private ExchangeFilterFunction throwOnErrorFilter() {
