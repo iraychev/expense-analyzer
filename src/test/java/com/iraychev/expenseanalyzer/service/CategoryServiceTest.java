@@ -8,10 +8,12 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -38,7 +40,7 @@ class CategoryServiceTest {
                 .build();
 
         when(vendorCategoryMappingService.getMappingForVendor("starbucks")).thenReturn(Optional.of(existing));
-        when(aiCategorizationService.categorizeRemittance(remittanceInfo)).thenReturn("Food");
+        when(aiCategorizationService.categorizeRemittances(List.of(remittanceInfo))).thenReturn(List.of("Food"));
 
         String result = categoryService.categorizeTransaction(remittanceInfo);
 
@@ -55,7 +57,7 @@ class CategoryServiceTest {
         String remittanceInfo = "авт.код:123-STARBUCKS";
 
         when(vendorCategoryMappingService.getMappingForVendor("starbucks")).thenReturn(Optional.empty());
-        when(aiCategorizationService.categorizeRemittance(remittanceInfo)).thenReturn("Food");
+        when(aiCategorizationService.categorizeRemittances(List.of(remittanceInfo))).thenReturn(List.of("Food"));
 
         String result = categoryService.categorizeTransaction(remittanceInfo);
 
@@ -81,8 +83,32 @@ class CategoryServiceTest {
         String result = categoryService.categorizeTransaction(remittanceInfo);
 
         assertEquals("Groceries", result);
-        verify(aiCategorizationService, never()).categorizeRemittance(remittanceInfo);
+        verify(aiCategorizationService, never()).categorizeRemittances(any());
         verify(vendorCategoryMappingService, never()).save(existing);
+    }
+
+    @Test
+    void descriptionsWithoutVendorAreNotCachedAndDoNotShareACategory() {
+        when(aiCategorizationService.categorizeRemittances(List.of("Salary", "Insurance premium")))
+                .thenReturn(List.of("Financial Services", "Health and Beauty"));
+
+        List<String> result = categoryService.categorizeTransactions(List.of("Salary", "Insurance premium"));
+
+        assertEquals(List.of("Financial Services", "Health and Beauty"), result);
+        verify(vendorCategoryMappingService, never()).save(any());
+    }
+
+    @Test
+    void sameVendorIsSentToTheAiOnce() {
+        String first = "ПОС 1.00 BGN авт.код:1-HK BAR GYUESHEVO/Sofia/TID:1";
+        String second = "ПОС 2.00 BGN авт.код:2-HK BAR GYUESHEVO/Sofia/TID:1";
+        when(vendorCategoryMappingService.getMappingForVendor("hk bar gyueshevo")).thenReturn(Optional.empty());
+        when(aiCategorizationService.categorizeRemittances(List.of(first))).thenReturn(List.of("Restaurants and bars"));
+
+        List<String> result = categoryService.categorizeTransactions(List.of(first, second));
+
+        assertEquals(List.of("Restaurants and bars", "Restaurants and bars"), result);
+        verify(vendorCategoryMappingService).save(any());
     }
 }
 

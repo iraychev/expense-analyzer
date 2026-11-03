@@ -6,6 +6,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Data
@@ -20,6 +21,8 @@ public class BankAccountDto {
     private String accountId;
 
     private Long bankConnectionId;
+
+    private LocalDateTime lastSyncedAt;
 
     private List<TransactionDto> transactions;
 }

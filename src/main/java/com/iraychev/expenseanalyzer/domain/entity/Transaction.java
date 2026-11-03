@@ -8,7 +8,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "transactions")
+@Table(name = "transactions", uniqueConstraints = @UniqueConstraint(columnNames = {"bank_account_id", "external_id"}))
 @Getter
 @Setter
 @NoArgsConstructor
@@ -18,6 +18,10 @@ public class Transaction {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    /** The bank's own transaction id, used to recognise a transaction on re-sync. Null for rows synced before it was stored. */
+    @Column(name = "external_id")
+    private String externalId;
 
     @Column(nullable = false)
     private BigDecimal amount;
