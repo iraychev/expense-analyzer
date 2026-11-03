@@ -7,6 +7,7 @@ import com.iraychev.expenseanalyzer.domain.entity.User;
 import com.iraychev.expenseanalyzer.dto.BankAccountDto;
 import com.iraychev.expenseanalyzer.dto.BankConnectionDto;
 import com.iraychev.expenseanalyzer.dto.RequisitionDto;
+import com.iraychev.expenseanalyzer.dto.TransactionDto;
 import com.iraychev.expenseanalyzer.dto.RequisitionRequestDto;
 import com.iraychev.expenseanalyzer.exception.ResourceNotFoundException;
 import com.iraychev.expenseanalyzer.exception.ValidationException;
@@ -18,17 +19,24 @@ import com.iraychev.expenseanalyzer.repository.BankConnectionRepository;
 import com.iraychev.expenseanalyzer.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Deque;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
-import java.util.Objects;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -42,6 +50,11 @@ public class BankConnectionService {
     private final BankConnectionRepository bankConnectionRepository;
     private final BankConnectionMapper bankConnectionMapper;
     private final TransactionMapper transactionMapper;
+    private final CategoryService categoryService;
+
+    /** Minimum time between two transaction fetches of the same account. */
+    @Value("${bank.sync.min-interval:PT6H}")
+    private Duration minSyncInterval = Duration.ofHours(6);
 
     /**
      * GoCardless requires references to be unique across the whole account (i.e. across all our users),
@@ -92,11 +105,20 @@ public class BankConnectionService {
             bankAccounts = bankConnection.getAccounts();
         }
 
-        List<BankAccountDto> updatedAccounts = goCardlessIntegrationService.updateBankAccountsWithFetchedTransactions(bankAccounts.stream()
-                .map(bankAccountMapper::toDTO)
-                .toList());
-
-        updateBankAccountsWithTransactions(bankAccounts, updatedAccounts);
+        // The bank only allows a few transaction fetches per account per day, so recently synced accounts are skipped.
+        LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
+        List<BankAccount> dueAccounts = bankAccounts.stream()
+                .filter(account -> isSyncDue(account, now))
+                .toList();
+        if (dueAccounts.size() < bankAccounts.size()) {
+            log.info("Skipping {} account(s) synced within the last {}", bankAccounts.size() - dueAccounts.size(), minSyncInterval);
+        }
+        if (!dueAccounts.isEmpty()) {
+            List<BankAccountDto> updatedAccounts = goCardlessIntegrationService.updateBankAccountsWithFetchedTransactions(dueAccounts.stream()
+                    .map(bankAccountMapper::toDTO)
+                    .toList());
+            updateBankAccountsWithTransactions(dueAccounts, updatedAccounts, now);
+        }
         bankConnection.setAccounts(bankAccounts);
         bankConnection = bankConnectionRepository.save(bankConnection);
 
@@ -142,38 +164,77 @@ public class BankConnectionService {
         return bankAccountRepository.saveAll(bankAccounts);
     }
 
-    private void updateBankAccountsWithTransactions(List<BankAccount> bankAccounts, List<BankAccountDto> updatedAccounts) {
+    private boolean isSyncDue(BankAccount account, LocalDateTime now) {
+        return account.getLastSyncedAt() == null || !account.getLastSyncedAt().plus(minSyncInterval).isAfter(now);
+    }
+
+    private void updateBankAccountsWithTransactions(List<BankAccount> bankAccounts, List<BankAccountDto> updatedAccounts,
+                                                    LocalDateTime now) {
         for (int i = 0; i < bankAccounts.size(); i++) {
             BankAccount account = bankAccounts.get(i);
-            BankAccountDto dto = updatedAccounts.get(i);
+            List<Transaction> newTransactions = findNewTransactions(account, updatedAccounts.get(i).getTransactions());
 
-            Set<String> existingDescriptions = account.getTransactions().stream()
-                    .map(Transaction::getDescription)
-                    .filter(Objects::nonNull)
-                    .collect(Collectors.toSet());
-
-            // Filter out transactions that already exist (based on description)
-            List<Transaction> newTransactions = dto.getTransactions().stream()
-                    .filter(transactionDto -> transactionDto.getDescription() != null
-                            && !existingDescriptions.contains(transactionDto.getDescription()))
-                    .map(transactionDto -> {
-                        Transaction transaction = transactionMapper.toEntity(transactionDto);
-                        transaction.setBankAccount(account);
-                        transaction.setOtherRetryCount(0);
-                        if ("Other".equalsIgnoreCase(transaction.getCategory())) {
-                            transaction.setOtherNextRetryAt(LocalDateTime.now(ZoneOffset.UTC).plusDays(1));
-                        } else {
-                            transaction.setOtherNextRetryAt(null);
-                        }
-                        return transaction;
-                    })
-                    .toList();
+            List<String> categories = categoryService.categorizeTransactions(
+                    newTransactions.stream().map(Transaction::getDescription).toList());
+            for (int t = 0; t < newTransactions.size(); t++) {
+                Transaction transaction = newTransactions.get(t);
+                transaction.setCategory(categories.get(t));
+                transaction.setOtherRetryCount(0);
+                transaction.setOtherNextRetryAt("Other".equalsIgnoreCase(categories.get(t)) ? now.plusDays(1) : null);
+            }
 
             account.getTransactions().addAll(newTransactions);
+            account.setLastSyncedAt(now);
 
             log.info("Added {} new transactions to account {}",
                     newTransactions.size(), account.getAccountId());
         }
         bankAccountRepository.saveAll(bankAccounts);
+    }
+
+    /**
+     * Returns the fetched transactions the account does not have yet. A transaction is known if its bank id is
+     * stored. Rows synced before ids were stored are matched by (date, amount, description), one stored row per
+     * fetched one so that repeated identical purchases are not collapsed, and get their id filled in.
+     */
+    List<Transaction> findNewTransactions(BankAccount account, List<TransactionDto> fetched) {
+        Set<String> knownIds = new HashSet<>();
+        Map<List<Object>, Deque<Transaction>> withoutId = new HashMap<>();
+        for (Transaction existing : account.getTransactions()) {
+            if (existing.getExternalId() != null) {
+                knownIds.add(existing.getExternalId());
+            } else {
+                withoutId.computeIfAbsent(matchKey(existing.getTransactionDate(), existing.getAmount(), existing.getDescription()),
+                        k -> new ArrayDeque<>()).add(existing);
+            }
+        }
+
+        List<Transaction> newTransactions = new ArrayList<>();
+        for (TransactionDto dto : fetched) {
+            String externalId = dto.getExternalId();
+            if (externalId != null && knownIds.contains(externalId)) {
+                continue;
+            }
+            Deque<Transaction> candidates = withoutId.get(matchKey(dto.getTransactionDate(), dto.getAmount(), dto.getDescription()));
+            if (candidates != null && !candidates.isEmpty()) {
+                Transaction legacy = candidates.poll();
+                if (externalId != null) {
+                    legacy.setExternalId(externalId);
+                    knownIds.add(externalId);
+                }
+                continue;
+            }
+            if (externalId != null) {
+                knownIds.add(externalId);
+            }
+            Transaction transaction = transactionMapper.toEntity(dto);
+            transaction.setBankAccount(account);
+            newTransactions.add(transaction);
+        }
+        return newTransactions;
+    }
+
+    private static List<Object> matchKey(LocalDateTime date, BigDecimal amount, String description) {
+        return Arrays.asList(date, amount == null ? null : amount.stripTrailingZeros(), description);
     }
 }

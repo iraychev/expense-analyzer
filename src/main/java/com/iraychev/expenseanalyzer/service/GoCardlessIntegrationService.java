@@ -13,6 +13,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -34,7 +35,6 @@ import java.util.regex.Pattern;
 @RequiredArgsConstructor
 public class GoCardlessIntegrationService {
     private final WebClient webClient;
-    private final CategoryService categoryService;
     private final ObjectMapper objectMapper;
 
     @Value("${gocardless.api.base-url}")
@@ -115,6 +115,9 @@ public class GoCardlessIntegrationService {
                         .queryParam("date_to", LocalDate.now(ZoneOffset.UTC))
                         .build())
                 .retrieve()
+                .onStatus(status -> status.value() == HttpStatus.TOO_MANY_REQUESTS.value(), response -> Mono.error(
+                        new BankIntegrationException(HttpStatus.TOO_MANY_REQUESTS,
+                                "The bank's daily limit for fetching transactions was reached. Please try again later")))
                 .bodyToMono(JsonNode.class)
                 .blockOptional()
                 .ifPresent(response -> {
@@ -204,14 +207,18 @@ public class GoCardlessIntegrationService {
                 }
 
                 String decodedRemittanceInfo = decodeUnicode(remittanceInformationUnstructured);
+                String externalId = transactionNode.path("transactionId").asText("");
+                if (externalId.isEmpty()) {
+                    externalId = transactionNode.path("internalTransactionId").asText("");
+                }
                 TransactionDto transactionDto = TransactionDto.builder()
+                        .externalId(externalId.isEmpty() ? null : externalId)
                         .amount(new BigDecimal(transactionNode.path("transactionAmount").path("amount").asText()))
                         .currency(transactionNode.path("transactionAmount").path("currency").asText())
                         .valueDate(LocalDate.parse(transactionNode.path("valueDate").asText()).atStartOfDay())
                         .transactionDate(LocalDate.parse(transactionNode.path("bookingDate").asText()).atStartOfDay())
                         .description(decodedRemittanceInfo)
                         .type(type)
-                        .category(categoryService.categorizeTransaction(decodedRemittanceInfo))
                         .bankAccountId(account.getId())
                         .build();
                 transactions.add(transactionDto);
